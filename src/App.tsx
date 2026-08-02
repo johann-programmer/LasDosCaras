@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import './App.css'
-import useAush from './hooks/useAush'
+import useAush from './hooks/useAuth'
 
 function App() {
   const { isAuthenticated, user, login, logout } = useAush()
