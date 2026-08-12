@@ -1,12 +1,13 @@
-import { apiFetch } from "./api";
+// src/services/categories.ts
+import { apiFetch } from './api';
 
-export function getCategories() {
-  return apiFetch("/categories");
+export interface Category {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  activo: boolean;
 }
 
-export function createCategory(name: string) {
-  return apiFetch("/categories", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
-}
+export const getCategories = (): Promise<Category[]> => {
+  return apiFetch<Category[]>('/categories');
+};
