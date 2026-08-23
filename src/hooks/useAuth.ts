@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+/** Usuario autenticado */
 export type AuthUser = {
   id: string
   name: string
@@ -10,16 +11,14 @@ const AUTH_STORAGE_KEY = 'lasdoscaras-auth-user'
 const ADMIN_EMAIL = 'admin@lasdoscaras.com'
 const ADMIN_PASSWORD = '123456'
 
+/**
+ * Recupera la sesión almacenada en localStorage.
+ */
 const getStoredUser = (): AuthUser | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
+  if (typeof window === 'undefined') return null
 
   const savedUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
-
-  if (!savedUser) {
-    return null
-  }
+  if (!savedUser) return null
 
   try {
     const parsedUser = JSON.parse(savedUser) as Partial<AuthUser>
@@ -38,15 +37,16 @@ const getStoredUser = (): AuthUser | null => {
   }
 }
 
-// Hook de autenticación simple para la app.
-// Guarda la sesión en localStorage y valida el acceso con un usuario fijo.
-export function useAush() {
+/**
+ * Hook encargado de gestionar la autenticación
+ * y la persistencia de la sesión.
+ */
+export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser)
 
+  /** Guarda o elimina la sesión del usuario. */
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
+    if (typeof window === 'undefined') return
 
     if (user) {
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
@@ -56,6 +56,7 @@ export function useAush() {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
   }, [user])
 
+  /** Inicia sesión validando las credenciales. */
   const login = useCallback(async (email: string, password: string) => {
     const normalizedEmail = email.trim().toLowerCase()
 
@@ -67,15 +68,14 @@ export function useAush() {
       throw new Error('Credenciales inválidas.')
     }
 
-    const authenticatedUser: AuthUser = {
+    setUser({
       id: '1',
       name: 'Administrador',
       email: ADMIN_EMAIL,
-    }
-
-    setUser(authenticatedUser)
+    })
   }, [])
 
+  /** Cierra la sesión del usuario. */
   const logout = useCallback(() => {
     setUser(null)
   }, [])
@@ -91,4 +91,4 @@ export function useAush() {
   )
 }
 
-export default useAush
+export default useAuth
