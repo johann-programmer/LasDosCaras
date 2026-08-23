@@ -1,22 +1,36 @@
-// src/hooks/useFetch.ts
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from 'react';
 
-export function useFetch<T>(url: string) {
+interface UseFetchResult<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+export const useFetch = <T>(
+  fetchFn: () => Promise<T>,
+  dependencies: any[] = []
+): UseFetchResult<T> => {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const executeFetch = useCallback(async () => {
     setLoading(true);
-    fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error("Error al obtener datos");
-        return res.json();
-      })
-      .then(setData)
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [url]);
+    setError(null);
+    try {
+      const result = await fetchFn();
+      setData(result);
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar los datos.');
+    } finally {
+      setLoading(false);
+    }
+  }, dependencies);
 
-  return { data, loading, error };
-}
+  useEffect(() => {
+    executeFetch();
+  }, [executeFetch]);
+
+  return { data, loading, error, refetch: executeFetch };
+};
