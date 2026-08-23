@@ -1,6 +1,7 @@
 import { useForm as useReactHookForm } from "react-hook-form";
+import { apiFetch } from "../services/api";
 
-interface RegisterForm  {
+interface RegisterForm {
   user: string;
   email: string;
   password: string;
@@ -20,8 +21,23 @@ export const useForm = () => {
     },
   });
 
-  const onSubmit = (data: RegisterForm) => {
-    console.log("Datos de registro:", data);
+  const onSubmit = async (data: RegisterForm) => {
+    try {
+      const response = await apiFetch("/auth/register", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      console.log("Registro exitoso:", response);
+
+      alert("Usuario registrado correctamente");
+
+      reset();
+    } catch (error) {
+      console.error("Error al registrar usuario:", error);
+
+      alert("No se pudo registrar el usuario");
+    }
   };
 
   return {
