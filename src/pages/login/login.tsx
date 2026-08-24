@@ -8,6 +8,7 @@
  */
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
 
@@ -15,8 +16,10 @@ import "./login.css";
 
 import logo from "../../assets/logo.png";
 
+
 function Login() {
   const { login } = useAuth();
+  const navigator = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,30 +27,30 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+const handleLogin = async (
+  e: FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    try {
-      await login(email, password);
+  try {
+    await login(email, password);
 
-      console.log("Inicio de sesión exitoso");
+    console.log("Inicio de sesión exitoso");
 
-      // Aquí puedes navegar al dashboard
-      // navigate("/dashboard");
-
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Correo o contraseña incorrectos.");
-      }
-    } finally {
-      setLoading(false);
+    navigator("/");
+  } catch (error) {
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError("Correo o contraseña incorrectos.");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-page">

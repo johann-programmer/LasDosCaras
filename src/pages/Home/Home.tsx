@@ -1,4 +1,4 @@
-// src/pages/Home.tsx
+// src/pages/Home/Home.tsx
 import React, { useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import { ViewCard, type ViewPost } from '../../components/ViewCard';
@@ -91,7 +91,7 @@ export const Home: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {data.posts.map((post) => (
-                <ViewCard key={post.id} post={post} onToggleFavorite={handleToggleFavorite} />
+                <ViewCard key={post.id} post={post}/>
               ))}
             </div>
           )}

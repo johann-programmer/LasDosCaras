@@ -1,9 +1,5 @@
-import Login from './pages/login/login';
+import AppRoutes from "./routes/AppRoutes";
 
 export default function App() {
-  return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      < Login />
-    </div>
-  );
+  return <AppRoutes />;
 }
