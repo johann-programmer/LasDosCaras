@@ -6,39 +6,51 @@
  * - Muestra mensajes de error.
  * ------------------------------------------------------------
  */
-
 import { useState } from "react";
+import type { FormEvent } from "react";
+
 import { useAuth } from "../../hooks/useAuth";
-import './login.css';
+
+import "./login.css";
+
 import logo from "../../assets/logo.png";
 
 function Login() {
-
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    try {
-      setError("");
+    setError("");
+    setLoading(true);
 
+    try {
       await login(email, password);
 
       console.log("Inicio de sesión exitoso");
 
+      // Aquí puedes navegar al dashboard
+      // navigate("/dashboard");
+
     } catch (error) {
-      setError("Correo o contraseña incorrectos.");
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Correo o contraseña incorrectos.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="login-page">
-
       <div className="login-card">
 
         <img
@@ -49,31 +61,41 @@ function Login() {
 
         <h1>Inicia sesión</h1>
 
-        <p>Accede a tu cuenta de Las Dos Caras</p>
+        <p>
+          Accede a tu cuenta de Las Dos Caras
+        </p>
 
         <form onSubmit={handleLogin}>
 
           <div className="input-group">
-            <label>Correo</label>
+            <label htmlFor="email">
+              Correo
+            </label>
 
             <input
-                 type="email"
-                 placeholder="Ingrese su correo"
-                 value={email}
-                 onChange={(e) => setEmail(e.target.value)}
-                 required
+              id="email"
+              type="email"
+              placeholder="Ingrese su correo"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
             />
           </div>
 
           <div className="input-group">
-            <label>Contraseña</label>
+            <label htmlFor="password">
+              Contraseña
+            </label>
 
             <input
-                  type="password"
-                  placeholder="Ingrese su contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+              id="password"
+              type="password"
+              placeholder="Ingrese su contraseña"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
             />
           </div>
 
@@ -83,12 +105,16 @@ function Login() {
             </p>
           )}
 
-          <button type="submit">
-            Iniciar sesión
+          <button
+            type="submit"
+            disabled={loading}
+          >
+            {loading
+              ? "Iniciando sesión..."
+              : "Iniciar sesión"}
           </button>
 
         </form>
-
       </div>
     </div>
   );

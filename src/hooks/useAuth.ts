@@ -1,94 +1,288 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-/** Usuario autenticado */
 export type AuthUser = {
-  id: string
-  name: string
-  email: string
-}
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: string;
+  createdAt: string;
+};
 
-const AUTH_STORAGE_KEY = 'lasdoscaras-auth-user'
-const ADMIN_EMAIL = 'admin@lasdoscaras.com'
-const ADMIN_PASSWORD = '123456'
+export type AuthSession = {
+  token: string;
+  user: AuthUser;
+};
+
+type LoginResponse = {
+  token: string;
+  user: AuthUser;
+};
+
+const AUTH_STORAGE_KEY = "lasdoscaras-auth-session";
+
+// URL de tu API / webhook
+const AUTH_WEBHOOK_URL =
+  "http://localhost:3000/api/auth/login";
 
 /**
  * Recupera la sesión almacenada en localStorage.
  */
-const getStoredUser = (): AuthUser | null => {
-  if (typeof window === 'undefined') return null
+const getStoredSession = (): AuthSession | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
 
-  const savedUser = window.localStorage.getItem(AUTH_STORAGE_KEY)
-  if (!savedUser) return null
+  const savedSession = window.localStorage.getItem(
+    AUTH_STORAGE_KEY
+  );
+
+  if (!savedSession) {
+    return null;
+  }
 
   try {
-    const parsedUser = JSON.parse(savedUser) as Partial<AuthUser>
+    const parsedSession = JSON.parse(
+      savedSession
+    ) as Partial<AuthSession>;
 
-    if (!parsedUser.id || !parsedUser.name || !parsedUser.email) {
-      return null
+    if (!parsedSession.token || !parsedSession.user) {
+      return null;
+    }
+
+    const user = parsedSession.user;
+
+    if (
+      !user.id ||
+      !user.email ||
+      !user.name ||
+      !user.role ||
+      !user.status ||
+      !user.createdAt
+    ) {
+      return null;
     }
 
     return {
-      id: parsedUser.id,
-      name: parsedUser.name,
-      email: parsedUser.email,
-    }
-  } catch {
-    return null
+      token: parsedSession.token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
+      },
+    };
+  } catch (error) {
+    console.error(
+      "Error recuperando la sesión:",
+      error
+    );
+
+    return null;
   }
-}
+};
 
-/**
- * Hook encargado de gestionar la autenticación
- * y la persistencia de la sesión.
- */
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(getStoredUser)
+  const [session, setSession] = useState<AuthSession | null>(
+    getStoredSession
+  );
 
-  /** Guarda o elimina la sesión del usuario. */
+  /**
+   * Guarda la sesión en localStorage.
+   */
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    if (user) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
-      return
+    if (typeof window === "undefined") {
+      return;
     }
 
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
-  }, [user])
-
-  /** Inicia sesión validando las credenciales. */
-  const login = useCallback(async (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase()
-
-    if (!normalizedEmail || !password.trim()) {
-      throw new Error('Debes ingresar correo y contraseña.')
+    if (session) {
+      window.localStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify(session)
+      );
+    } else {
+      window.localStorage.removeItem(
+        AUTH_STORAGE_KEY
+      );
     }
+  }, [session]);
 
-    if (normalizedEmail !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-      throw new Error('Credenciales inválidas.')
-    }
+  /**
+   * Inicia sesión utilizando el webhook.
+   */
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const normalizedEmail = email
+        .trim()
+        .toLowerCase();
 
-    setUser({
-      id: '1',
-      name: 'Administrador',
-      email: ADMIN_EMAIL,
-    })
-  }, [])
+      if (!normalizedEmail || !password) {
+        throw new Error(
+          "Debes ingresar correo y contraseña."
+        );
+      }
 
-  /** Cierra la sesión del usuario. */
+      const response = await fetch(
+        AUTH_WEBHOOK_URL,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password: password,
+          }),
+        }
+      );
+
+      /**
+       * Credenciales incorrectas.
+       */
+      if (response.status === 401) {
+        throw new Error(
+          "Correo o contraseña incorrectos."
+        );
+      }
+
+      /**
+       * Otros errores HTTP.
+       */
+      if (!response.ok) {
+        throw new Error(
+          `Error del servidor: ${response.status}`
+        );
+      }
+
+      /**
+       * El webhook devuelve:
+       *
+       * {
+       *   "token": "...",
+       *   "user": {
+       *      "id": "...",
+       *      "email": "...",
+       *      "name": "...",
+       *      "role": "...",
+       *      "status": "...",
+       *      "createdAt": "..."
+       *   }
+       * }
+       */
+      const data: LoginResponse =
+        await response.json();
+
+      console.log(
+        "Respuesta del API:",
+        data
+      );
+
+      /**
+       * Validamos que exista el token.
+       */
+      if (!data.token) {
+        throw new Error(
+          "El servidor no devolvió un token."
+        );
+      }
+
+      /**
+       * Validamos que exista el usuario.
+       */
+      if (!data.user) {
+        throw new Error(
+          "El servidor no devolvió información del usuario."
+        );
+      }
+
+      /**
+       * Creamos la sesión.
+       */
+      const newSession: AuthSession = {
+        token: data.token,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role,
+          status: data.user.status,
+          createdAt: data.user.createdAt,
+        },
+      };
+
+      /**
+       * Guardamos la sesión en el estado.
+       * El useEffect se encargará de guardarla
+       * también en localStorage.
+       */
+      setSession(newSession);
+
+      console.log(
+        "Usuario autenticado:",
+        newSession.user
+      );
+
+      console.log(
+        "Token:",
+        newSession.token
+      );
+    },
+    []
+  );
+
+  /**
+   * Cierra la sesión.
+   */
   const logout = useCallback(() => {
-    setUser(null)
-  }, [])
+    setSession(null);
+  }, []);
+
+  /**
+   * Token JWT.
+   */
+  const token = session?.token ?? null;
+
+  /**
+   * Usuario autenticado.
+   */
+  const user = session?.user ?? null;
 
   return useMemo(
     () => ({
       user,
-      isAuthenticated: Boolean(user),
+      token,
+      session,
+      isAuthenticated: Boolean(session),
       login,
       logout,
     }),
-    [user, login, logout],
-  )
+    [
+      user,
+      token,
+      session,
+      login,
+      logout,
+    ]
+  );
 }
 
-export default useAuth
+export default useAuth;
+
+
+
+/*
+Para hacer llamada usando el token
+
+const { token } = useAuth();
+
+const response = await fetch(
+  "http://localhost:3000/api/posts",
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  }
+);*/
