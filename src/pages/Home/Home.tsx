@@ -9,20 +9,26 @@ export const Home: React.FC = () => {
   const [page, setPage] = useState<number>(1);
 
   // Petición de publicaciones con useFetch
-  const endpoint = selectedCategory === 'all' 
-    ? `/views?page=${page}&limit=6` 
-    : `/views?categoryId=${selectedCategory}&page=${page}&limit=6`;
+// Petición de publicaciones adaptada a tu hook useFetch
+  const endpoint =
+    selectedCategory === 'all'
+      ? `/api/views?page=${page}&limit=6`
+      : `/api/views?category=${selectedCategory}&page=${page}&limit=6`;
 
   const { data, loading, error, refetch } = useFetch<{
     posts: ViewPost[];
     totalPages: number;
-  }>(endpoint);
-
-  const handleToggleFavorite = (id: string) => {
-    // Aquí conectarás con la API o el estado local de favoritos
-    console.log('Toggled favorite for post:', id);
-  };
-
+  }>(
+    async () => {
+      const res = await fetch(endpoint);
+      if (!res.ok) {
+        throw new Error('Error al cargar las publicaciones.');
+      }
+      return res.json();
+    },
+    [endpoint] // Dependencia para que se vuelva a ejecutar cuando cambie la categoría o la página
+  );
+  
   return (
     <div className="min-h-screen bg-black text-zinc-100 p-6 md:p-10 max-w-7xl mx-auto">
       {/* Header del Tablero */}
