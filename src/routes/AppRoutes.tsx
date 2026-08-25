@@ -1,16 +1,16 @@
+// src/routes/AppRoutes.tsx
 import { Routes, Route } from 'react-router-dom';
 
-
 import Login from '../pages/login/login';
-import {Home} from '../pages/Home/Home';
+import { Home } from '../pages/Home/Home';
 import Register from '../pages/Register/Register';
-import {CategoryDetail} from '../pages/CategoryDetail/CategoryDetail';
-import {ViewDetail} from '../pages/ViewDetail/ViewDetail';
+import { CategoryDetail } from '../pages/CategoryDetail/CategoryDetail';
+import { ViewDetail } from '../pages/ViewDetail/ViewDetail';
 import NewView from '../pages/views/NewView';
 import EditView from '../pages/views/EditView';
-import Profile from'../pages/Profile/Profile';
+import Profile from '../pages/Profile/Profile';
 import Search from '../pages/Search/Search';
-import Author from '../pages/Author/Author';
+import { AuthorDetail } from '../pages/AuthorDetail/AuthorDetail';
 import Forbidden from '../pages/NotFound/Forbidden';
 import NotFound from '../pages/NotFound/NotFound';
 
@@ -24,34 +24,31 @@ import RoleRoute from './RoleRoute';
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Public routes */}
-      
+      {/* Rutas públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<Home />} />
       <Route path="/register" element={<Register />} />
       <Route path="/categories/:id" element={<CategoryDetail />} />
       <Route path="/views/:id" element={<ViewDetail />} />
       <Route path="/search" element={<Search />} />
-      <Route path="/authors/:id" element={<Author />} />
+      <Route path="/authors/:id" element={<AuthorDetail />} />
 
-      {/* Authentication routes */}
+      {/* Rutas protegidas (Requieren sesión activa) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/views/new" element={<NewView />} />
         <Route path="/views/:id/edit" element={<EditView />} />
         <Route path="/profile" element={<Profile />} />
 
-        {/* Admin routes */}
-        <Route element={<RoleRoute roles={["ADMIN"]} />}>
+        {/* Rutas de administrador */}
+        <Route element={<RoleRoute roles={['ADMIN']} />}>
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/categories" element={<AdminCategories />} />
           <Route path="/admin/moderation" element={<AdminModeration />} />
         </Route>
       </Route>
 
-      {/* Authorization error */}
+      {/* Errores de acceso y 404 */}
       <Route path="/403" element={<Forbidden />} />
-
-      {/* Not found */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -1,7 +1,7 @@
 // src/components/ViewCard.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, ThumbsUp, ThumbsDown, Eye, Calendar, User } from 'lucide-react';
+import { Heart, ThumbsUp, ThumbsDown, Calendar, User } from 'lucide-react';
 
 export interface ViewPost {
   id: string;
