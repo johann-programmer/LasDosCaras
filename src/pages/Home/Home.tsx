@@ -234,7 +234,7 @@ export const Home: React.FC = () => {
     const loadCategories = async () => {
       try {
         const response =
-          await fetch('/api/categories');
+          await fetch('http://localhost:3000/api/categories');
 
         if (!response.ok) {
           throw new Error(
@@ -284,7 +284,7 @@ export const Home: React.FC = () => {
     const loadHashtags = async () => {
       try {
         const response =
-          await fetch('/api/hashtags');
+          await fetch('http://localhost:3000/api/hashtags');
 
         if (!response.ok) {
           throw new Error(
@@ -468,7 +468,7 @@ export const Home: React.FC = () => {
     try {
       const response =
         await fetch(
-          `/api/views/${postId}/favorite`,
+          `http://localhost:3000/api/views/${postId}/favorite`,
           {
             method:
               currentlyFavorite
@@ -611,7 +611,7 @@ export const Home: React.FC = () => {
           {/* Categorías */}
 
           <Link
-            to="/categories"
+            to="/categories/:id"
             className="home-categories-link"
           >
             Categorías

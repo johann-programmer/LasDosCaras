@@ -25,7 +25,7 @@ export const CategoryDetail: React.FC = () => {
   // Adaptado a la firma de tu useFetch (función asíncrona + arreglo de dependencias)
   const { data, loading, error, refetch } = useFetch<CategoryResponse>(
     async () => {
-      const response = await fetch(`/api/categories/${id}?page=${page}&limit=6`);
+      const response = await fetch(`http://localhost:3000/api/categories/${id}?page=${page}&limit=6`);
       if (!response.ok) {
         throw new Error('No se pudo obtener la categoría.');
       }
