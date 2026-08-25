@@ -1,125 +1,1076 @@
 // src/pages/Home/Home.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
+import useAuth from '../../hooks/useAuth';
 import { ViewCard, type ViewPost } from '../../components/ViewCard';
-import { Filter, RefreshCw, LayoutGrid } from 'lucide-react';
+
+import {
+  Filter,
+  RefreshCw,
+  LayoutGrid,
+  Search,
+  Sun,
+  Moon,
+  LogIn,
+  UserPlus,
+  LogOut,
+  ChevronDown,
+  X,
+  Share2,
+} from 'lucide-react';
+
+import {
+  useNavigate,
+  useSearchParams,
+  Link,
+} from 'react-router-dom';
+
+import './Home.css';
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface Hashtag {
+  id?: string;
+  name: string;
+}
 
 export const Home: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [page, setPage] = useState<number>(1);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Petición de publicaciones con useFetch
-// Petición de publicaciones adaptada a tu hook useFetch
-  const endpoint =
-    selectedCategory === 'all'
-      ? `/api/views?page=${page}&limit=6`
-      : `/api/views?category=${selectedCategory}&page=${page}&limit=6`;
+  const { user, token, isAuthenticated, logout } = useAuth();
 
-  const { data, loading, error, refetch } = useFetch<{
+  const selectedCategory =
+    searchParams.get('category') ?? 'all';
+
+  const selectedHashtag =
+    searchParams.get('hashtag') ?? '';
+
+  const selectedSort =
+    searchParams.get('sort') ?? 'recent';
+
+  const pageParam = Number(
+    searchParams.get('page') ?? '1'
+  );
+
+  const page =
+    Number.isFinite(pageParam) && pageParam > 0
+      ? pageParam
+      : 1;
+
+  const [searchText, setSearchText] = useState(
+    searchParams.get('q') ?? ''
+  );
+
+  const [hashtagInput, setHashtagInput] =
+    useState('');
+
+  const [profileMenuOpen, setProfileMenuOpen] =
+    useState(false);
+
+  const [isDark, setIsDark] = useState(true);
+
+  const [categories, setCategories] = useState<Category[]>(
+    []
+  );
+
+  const [hashtags, setHashtags] = useState<Hashtag[]>(
+    []
+  );
+
+  const [favoriteIds, setFavoriteIds] =
+    useState<Set<string>>(() => {
+      if (typeof window === 'undefined') {
+        return new Set();
+      }
+
+      try {
+        const saved =
+          window.localStorage.getItem(
+            'lasdoscaras_favorites'
+          );
+
+        if (!saved) {
+          return new Set();
+        }
+
+        const parsed = JSON.parse(saved);
+
+        if (!Array.isArray(parsed)) {
+          return new Set();
+        }
+
+        return new Set(parsed.map(String));
+      } catch {
+        return new Set();
+      }
+    });
+
+  const [shareMessage, setShareMessage] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const savedTheme =
+      window.localStorage.getItem(
+        'lasdoscaras_theme'
+      );
+
+    const dark = savedTheme !== 'light';
+
+    setIsDark(dark);
+
+    document.documentElement.classList.toggle(
+      'dark',
+      dark
+    );
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+
+    setIsDark(nextDark);
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        'lasdoscaras_theme',
+        nextDark ? 'dark' : 'light'
+      );
+    }
+
+    document.documentElement.classList.toggle(
+      'dark',
+      nextDark
+    );
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(
+      'lasdoscaras_favorites',
+      JSON.stringify(Array.from(favoriteIds))
+    );
+  }, [favoriteIds]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProfileMenuOpen(false);
+    }
+  }, [isAuthenticated]);
+
+  const endpoint = useMemo(() => {
+    const params = new URLSearchParams();
+
+    params.set('page', String(page));
+    params.set('limit', '6');
+
+    if (
+      selectedCategory &&
+      selectedCategory !== 'all'
+    ) {
+      params.set(
+        'category',
+        selectedCategory
+      );
+    }
+
+    if (selectedHashtag) {
+      params.set(
+        'hashtag',
+        selectedHashtag
+      );
+    }
+
+    if (selectedSort) {
+      params.set(
+        'sort',
+        selectedSort
+      );
+    }
+
+    return `/api/views?${params.toString()}`;
+  }, [
+    page,
+    selectedCategory,
+    selectedHashtag,
+    selectedSort,
+  ]);
+
+  const {
+    data,
+    loading,
+    error,
+    refetch,
+  } = useFetch<{
     posts: ViewPost[];
     totalPages: number;
   }>(
     async () => {
       const res = await fetch(endpoint);
+
       if (!res.ok) {
-        throw new Error('Error al cargar las publicaciones.');
+        throw new Error(
+          'Error al cargar las publicaciones.'
+        );
       }
+
       return res.json();
     },
-    [endpoint] // Dependencia para que se vuelva a ejecutar cuando cambie la categoría o la página
+    [endpoint]
   );
-  
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCategories = async () => {
+      try {
+        const response =
+          await fetch('/api/categories');
+
+        if (!response.ok) {
+          throw new Error(
+            'No se pudieron cargar las categorías.'
+          );
+        }
+
+        const result = await response.json();
+
+        const list = Array.isArray(result)
+          ? result
+          : Array.isArray(result.categories)
+            ? result.categories
+            : [];
+
+        const normalized = list.map(
+          (category: any) => ({
+            id: String(category.id),
+            name:
+              category.name ??
+              category.categoryName ??
+              '',
+          })
+        );
+
+        if (!cancelled) {
+          setCategories(normalized);
+        }
+      } catch (err) {
+        console.error(
+          'Error cargando categorías:',
+          err
+        );
+      }
+    };
+
+    loadCategories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHashtags = async () => {
+      try {
+        const response =
+          await fetch('/api/hashtags');
+
+        if (!response.ok) {
+          throw new Error(
+            'No se pudieron cargar los hashtags.'
+          );
+        }
+
+        const result = await response.json();
+
+
+
+        const list = Array.isArray(result)
+
+          ? result
+
+          : Array.isArray(result.hashtags)
+
+          ? result.hashtags
+
+          : [];
+
+        const normalized = list.map(
+          (hashtag: any) => ({
+            id:
+              hashtag.id !== undefined
+                ? String(hashtag.id)
+                : undefined,
+
+            name:
+              typeof hashtag === 'string'
+                ? hashtag
+                : hashtag.name ??
+                hashtag.tag ??
+                '',
+          })
+        );
+
+        if (!cancelled) {
+          setHashtags(
+            normalized.filter(
+              (item: Hashtag) =>
+                Boolean(item.name)
+            )
+          );
+        }
+      } catch (err) {
+        console.error(
+          'Error cargando hashtags:',
+          err
+        );
+      }
+    };
+
+    loadHashtags();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchText.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setSearchParams(
+        (previous) => {
+          const next =
+            new URLSearchParams(previous);
+
+          next.set('q', trimmed);
+
+          return next;
+        },
+        {
+          replace: true,
+        }
+      );
+    }, 300);
+
+    return () =>
+      window.clearTimeout(timeout);
+  }, [
+    searchText,
+    setSearchParams,
+  ]);
+
+  const updateFilter = (
+    key: string,
+    value: string
+  ) => {
+    setSearchParams((previous) => {
+      const next =
+        new URLSearchParams(previous);
+
+      if (
+        !value ||
+        (key === 'category' &&
+          value === 'all')
+      ) {
+        next.delete(key);
+      } else {
+        next.set(key, value);
+      }
+
+      next.set('page', '1');
+
+      return next;
+    });
+  };
+
+  const changePage = (
+    nextPage: number
+  ) => {
+    setSearchParams((previous) => {
+      const next =
+        new URLSearchParams(previous);
+
+      next.set(
+        'page',
+        String(nextPage)
+      );
+
+      return next;
+    });
+  };
+
+  const addHashtag = (
+    hashtag: string
+  ) => {
+    const clean =
+      hashtag
+        .trim()
+        .replace(/^#/, '');
+
+    if (!clean) {
+      return;
+    }
+
+    updateFilter(
+      'hashtag',
+      clean
+    );
+
+    setHashtagInput('');
+  };
+
+  const removeHashtag = () => {
+    updateFilter(
+      'hashtag',
+      ''
+    );
+  };
+
+  const toggleFavorite = async (
+    postId: string
+  ) => {
+    if (!isAuthenticated || !token) {
+      navigate('/login');
+      return;
+    }
+
+    const currentlyFavorite =
+      favoriteIds.has(postId);
+
+    setFavoriteIds((previous) => {
+      const next = new Set(previous);
+
+      if (currentlyFavorite) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+
+      return next;
+    });
+
+    try {
+      const response =
+        await fetch(
+          `/api/views/${postId}/favorite`,
+          {
+            method:
+              currentlyFavorite
+                ? 'DELETE'
+                : 'POST',
+
+            headers: {
+              'Content-Type':
+                'application/json',
+
+              Authorization:
+                `Bearer ${token}`,
+            },
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          'No se pudo actualizar el favorito.'
+        );
+      }
+    } catch (err) {
+      setFavoriteIds((previous) => {
+        const next = new Set(previous);
+
+        if (currentlyFavorite) {
+          next.add(postId);
+        } else {
+          next.delete(postId);
+        }
+
+        return next;
+      });
+
+      console.error(
+        'Error actualizando favorito:',
+        err
+      );
+    }
+  };
+
+  const sharePost = async (
+    postId: string
+  ) => {
+    const url =
+      `${window.location.origin}/views/${postId}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Las Dos Caras',
+          url,
+        });
+
+        return;
+      }
+
+      await navigator.clipboard.writeText(
+        url
+      );
+
+      setShareMessage(
+        'Enlace copiado'
+      );
+
+      window.setTimeout(() => {
+        setShareMessage(null);
+      }, 2000);
+    } catch (err) {
+      console.error(
+        'No se pudo compartir:',
+        err
+      );
+    }
+  };
+
+  const handleSearchKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+
+    const query =
+      searchText.trim();
+
+    if (!query) {
+      return;
+    }
+
+    navigate(
+      `/search?q=${encodeURIComponent(
+        query
+      )}`
+    );
+  };
+
+  const handleLogout = () => {
+    logout();
+    setProfileMenuOpen(false);
+  };
+
+  const posts =
+    data?.posts?.map((post) => ({
+      ...post,
+      isFavorite:
+        isAuthenticated &&
+        favoriteIds.has(post.id),
+    })) ?? [];
+
   return (
-    <div className="min-h-screen bg-black text-zinc-100 p-6 md:p-10 max-w-7xl mx-auto">
-      {/* Header del Tablero */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-zinc-800">
-        <div>
-          <h1 className="text-3xl font-black text-white flex items-center gap-2">
-            <LayoutGrid className="w-8 h-8 text-blue-500" />
-            Tablero Principal
-          </h1>
-          <p className="text-zinc-400 text-sm mt-1">
-            Explora opiniones, debates y contraposturas en tiempo real.
-          </p>
-        </div>
+    <div
+      className={`home-page ${isDark
+        ? 'home-dark'
+        : 'home-light'
+        }`}
+    >
+      {/* ================= NAVBAR ================= */}
 
-        {/* Filtro rápido de categorías */}
-        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 p-1.5 rounded-xl">
-          <Filter className="w-4 h-4 text-zinc-400 ml-2" />
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setPage(1);
-            }}
-            className="bg-transparent text-sm text-zinc-200 outline-none pr-4 cursor-pointer"
+      <nav className="home-navbar">
+        <div className="home-navbar-inner">
+
+          {/* Logo */}
+
+          <Link
+            to="/"
+            className="home-logo"
           >
-            <option value="all" className="bg-zinc-900">Todas las categorías</option>
-            <option value="tech" className="bg-zinc-900">Tecnología</option>
-            <option value="politics" className="bg-zinc-900">Política</option>
-            <option value="sports" className="bg-zinc-900">Deportes</option>
-          </select>
-        </div>
-      </header>
-
-      {/* Estados de Carga y Error */}
-      {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-64 bg-zinc-900/50 border border-zinc-800 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <div className="p-6 bg-rose-950/30 border border-rose-800/40 rounded-xl text-center text-rose-300">
-          <p className="font-semibold mb-2">Ocurrió un error al cargar las publicaciones.</p>
-          <button
-            onClick={refetch}
-            className="inline-flex items-center gap-2 text-xs bg-rose-900/50 hover:bg-rose-800/50 px-3 py-1.5 rounded-lg border border-rose-700 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Reintentar
-          </button>
-        </div>
-      )}
-
-      {/* Grilla de Publicaciones */}
-      {!loading && !error && data?.posts && (
-        <>
-          {data.posts.length === 0 ? (
-            <p className="text-center text-zinc-500 py-12">No hay publicaciones disponibles en esta sección.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.posts.map((post) => (
-                <ViewCard key={post.id} post={post}/>
-              ))}
+            <div className="home-logo-icon">
+              <LayoutGrid />
             </div>
+
+            <span>
+              Las Dos Caras
+            </span>
+          </Link>
+
+          {/* Categorías */}
+
+          <Link
+            to="/categories"
+            className="home-categories-link"
+          >
+            Categorías
+          </Link>
+
+          {/* Buscador */}
+
+          <div className="home-search">
+            <Search />
+
+            <input
+              type="search"
+              value={searchText}
+              onChange={(event) =>
+                setSearchText(
+                  event.target.value
+                )
+              }
+              onKeyDown={
+                handleSearchKeyDown
+              }
+              placeholder="Buscar publicaciones..."
+            />
+          </div>
+
+          {/* Acciones */}
+
+          <div className="home-actions">
+
+            {/* Tema */}
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="home-icon-button"
+              title={
+                isDark
+                  ? 'Cambiar a tema claro'
+                  : 'Cambiar a tema oscuro'
+              }
+            >
+              {isDark ? (
+                <Sun />
+              ) : (
+                <Moon />
+              )}
+            </button>
+
+            {!isAuthenticated ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate('/login')
+                  }
+                  className="home-login-button"
+                >
+                  <LogIn />
+                  Iniciar sesión
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate('/register')
+                  }
+                  className="home-register-button"
+                >
+                  <UserPlus />
+                  Registro
+                </button>
+              </>
+            ) : (
+              <div className="home-profile">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setProfileMenuOpen(
+                      (open) => !open
+                    )
+                  }
+                  className="home-profile-button"
+                >
+                  <span>
+                    {user?.name}
+                  </span>
+
+                  <ChevronDown />
+                </button>
+
+                {profileMenuOpen && (
+                  <div className="home-profile-menu">
+
+                    {user && (
+                      <Link
+                        to={`/authors/${user.id}`}
+                        onClick={() =>
+                          setProfileMenuOpen(
+                            false
+                          )
+                        }
+                      >
+                        Perfil
+                      </Link>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={
+                        handleLogout
+                      }
+                    >
+                      <LogOut />
+                      Cerrar sesión
+                    </button>
+
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* ================= CONTENIDO ================= */}
+
+      <main className="home-main">
+
+        {/* Encabezado */}
+
+        <header className="home-heading">
+
+          <div>
+            <h1>
+              <LayoutGrid />
+              Tablero Principal
+            </h1>
+
+            <p>
+              Explora opiniones, debates y
+              contraposturas en tiempo real.
+            </p>
+          </div>
+
+        </header>
+
+        {/* ================= FILTROS ================= */}
+
+        <section className="home-filters">
+
+          {/* Categoría */}
+
+          <div className="home-filter-item">
+
+            <Filter />
+
+            <select
+              value={
+                selectedCategory
+              }
+              onChange={(event) =>
+                updateFilter(
+                  'category',
+                  event.target.value
+                )
+              }
+            >
+              <option value="all">
+                Todas las categorías
+              </option>
+
+              {categories.map(
+                (category) => (
+                  <option
+                    key={category.id}
+                    value={category.id}
+                  >
+                    {category.name}
+                  </option>
+                )
+              )}
+            </select>
+
+          </div>
+
+          {/* Hashtag */}
+
+          <div className="home-hashtag">
+
+            <input
+              type="text"
+              value={hashtagInput}
+              onChange={(event) =>
+                setHashtagInput(
+                  event.target.value
+                )
+              }
+              onKeyDown={(event) => {
+                if (
+                  event.key ===
+                  'Enter'
+                ) {
+                  event.preventDefault();
+
+                  addHashtag(
+                    hashtagInput
+                  );
+                }
+              }}
+              placeholder="Buscar por hashtag y presiona Enter..."
+            />
+
+            {hashtagInput.trim() &&
+              hashtags.length > 0 && (
+                <div className="home-hashtag-suggestions">
+
+                  {hashtags
+                    .filter(
+                      (hashtag) =>
+                        hashtag.name
+                          .toLowerCase()
+                          .includes(
+                            hashtagInput
+                              .trim()
+                              .replace(
+                                /^#/,
+                                ''
+                              )
+                              .toLowerCase()
+                          )
+                    )
+                    .slice(0, 8)
+                    .map(
+                      (hashtag) => (
+                        <button
+                          key={
+                            hashtag.id ??
+                            hashtag.name
+                          }
+                          type="button"
+                          onClick={() =>
+                            addHashtag(
+                              hashtag.name
+                            )
+                          }
+                        >
+                          #
+                          {
+                            hashtag.name
+                          }
+                        </button>
+                      )
+                    )}
+
+                </div>
+              )}
+
+            {selectedHashtag && (
+              <div className="home-active-hashtag">
+                <span>
+                  #
+                  {
+                    selectedHashtag
+                  }
+
+                  <button
+                    type="button"
+                    onClick={
+                      removeHashtag
+                    }
+                    title="Eliminar hashtag"
+                  >
+                    <X />
+                  </button>
+                </span>
+              </div>
+            )}
+
+          </div>
+
+          {/* Ordenamiento */}
+
+          <div className="home-filter-item">
+
+            <select
+              value={selectedSort}
+              onChange={(event) =>
+                updateFilter(
+                  'sort',
+                  event.target.value
+                )
+              }
+            >
+              <option value="recent">
+                Más recientes
+              </option>
+
+              <option value="likesA">
+                Más likes Lado A
+              </option>
+
+              <option value="likesB">
+                Más likes Lado B
+              </option>
+            </select>
+
+          </div>
+
+        </section>
+
+        {/* ================= CARGANDO ================= */}
+
+        {loading && (
+          <div className="home-post-grid">
+
+            {[1, 2, 3, 4, 5, 6].map(
+              (i) => (
+                <div
+                  key={i}
+                  className="home-loading-card"
+                />
+              )
+            )}
+
+          </div>
+        )}
+
+        {/* ================= ERROR ================= */}
+
+        {error && (
+          <div className="home-error">
+
+            <p>
+              Ocurrió un error al cargar
+              las publicaciones.
+            </p>
+
+            <button
+              onClick={refetch}
+            >
+              <RefreshCw />
+              Reintentar
+            </button>
+
+          </div>
+        )}
+
+        {/* ================= PUBLICACIONES ================= */}
+
+        {!loading &&
+          !error && (
+            <>
+              {posts.length === 0 ? (
+                <div className="home-empty">
+                  <LayoutGrid />
+
+                  <p>
+                    No hay publicaciones
+                    disponibles en esta
+                    sección.
+                  </p>
+                </div>
+              ) : (
+                <div className="home-post-grid">
+
+                  {posts.map((post) => (
+                    <article
+                      key={post.id}
+                      className="home-post-wrapper"
+                    >
+
+                      <ViewCard
+                        post={post}
+                        isAuthenticated={
+                          isAuthenticated
+                        }
+                        onToggleFavorite={
+                          isAuthenticated
+                            ? toggleFavorite
+                            : undefined
+                        }
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          sharePost(
+                            post.id
+                          )
+                        }
+                        title="Compartir"
+                        className="home-share-button"
+                      >
+                        <Share2 />
+                      </button>
+
+                    </article>
+                  ))}
+
+                </div>
+              )}
+
+              {/* ================= PAGINACIÓN ================= */}
+
+              {data &&
+                data.totalPages > 1 && (
+                  <div className="home-pagination">
+
+                    <button
+                      disabled={
+                        page === 1
+                      }
+                      onClick={() =>
+                        changePage(
+                          page - 1
+                        )
+                      }
+                    >
+                      Anterior
+                    </button>
+
+                    <span>
+                      Página {page} de{' '}
+                      {
+                        data.totalPages
+                      }
+                    </span>
+
+                    <button
+                      disabled={
+                        page ===
+                        data.totalPages
+                      }
+                      onClick={() =>
+                        changePage(
+                          page + 1
+                        )
+                      }
+                    >
+                      Siguiente
+                    </button>
+
+                  </div>
+                )}
+            </>
           )}
 
-          {/* Paginación */}
-          {data.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-10">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-800 transition-colors"
-              >
-                Anterior
-              </button>
-              <span className="text-xs text-zinc-400 font-mono">
-                Página {page} de {data.totalPages}
-              </span>
-              <button
-                disabled={page === data.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-800 transition-colors"
-              >
-                Siguiente
-              </button>
-            </div>
-          )}
-        </>
+      </main>
+
+      {/* ================= MENSAJE ================= */}
+
+      {shareMessage && (
+        <div className="home-share-message">
+          {shareMessage}
+        </div>
       )}
+
     </div>
   );
 };
