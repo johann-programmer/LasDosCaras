@@ -17,15 +17,19 @@ import {
   ChevronDown,
   X,
   Share2,
+  Plus,
 } from 'lucide-react';
 
 import {
   useNavigate,
   useSearchParams,
+  useLocation,
   Link,
 } from 'react-router-dom';
 
 import './Home.css';
+
+const API_BASE = 'http://localhost:3000/api';
 
 interface Category {
   id: string;
@@ -37,8 +41,47 @@ interface Hashtag {
   name: string;
 }
 
+interface ViewsListResponse {
+  posts: ViewPost[];
+  totalPages: number;
+  total: number;
+}
+
+const mapApiViewToPost = (view: any): ViewPost => {
+  const sides = Array.isArray(view?.sides) ? view.sides : [];
+  const sideA = sides.find((side: any) => side.type === 'SIDE') ?? {};
+  const sideB =
+    sides.find((side: any) => side.type === 'COUNTERPART') ?? {};
+
+  const titleA = sideA.title ?? '';
+  const titleB = sideB.title ?? '';
+  const descriptionA = sideA.description ?? '';
+
+  return {
+    id: String(view.id),
+    title:
+      titleA && titleB
+        ? `${titleA} vs ${titleB}`
+        : titleA || titleB || 'Publicación',
+    summary: descriptionA
+      ? `${descriptionA.slice(0, 180)}${descriptionA.length > 180 ? '…' : ''}`
+      : '',
+    categoryName: view.category?.name ?? '',
+    categoryId: String(view.categoryId ?? view.category?.id ?? ''),
+    authorName: view.author?.name ?? 'Autor',
+    authorId: String(view.authorId ?? view.author?.id ?? ''),
+    createdAt: view.createdAt ?? new Date().toISOString(),
+    likesSideA: sideA.likeCount ?? 0,
+    likesSideB: sideB.likeCount ?? 0,
+    dislikesSideA: sideA.dislikeCount ?? 0,
+    dislikesSideB: sideB.dislikeCount ?? 0,
+    isFavorite: Boolean(view.isFavorite),
+  };
+};
+
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { user, token, isAuthenticated, logout } = useAuth();
@@ -190,14 +233,14 @@ export const Home: React.FC = () => {
       );
     }
 
-    if (selectedSort) {
-      params.set(
-        'sort',
-        selectedSort
-      );
-    }
+    const sort =
+      selectedSort === 'likes' || selectedSort === 'dislikes'
+        ? selectedSort
+        : 'recent';
 
-    return `/api/views?${params.toString()}`;
+    params.set('sort', sort);
+
+    return `${API_BASE}/views?${params.toString()}`;
   }, [
     page,
     selectedCategory,
@@ -210,12 +253,13 @@ export const Home: React.FC = () => {
     loading,
     error,
     refetch,
-  } = useFetch<{
-    posts: ViewPost[];
-    totalPages: number;
-  }>(
+  } = useFetch<ViewsListResponse>(
     async () => {
-      const res = await fetch(endpoint);
+      const res = await fetch(endpoint, {
+        headers: token
+          ? { Authorization: `Bearer ${token}` }
+          : undefined,
+      });
 
       if (!res.ok) {
         throw new Error(
@@ -223,9 +267,24 @@ export const Home: React.FC = () => {
         );
       }
 
-      return res.json();
+      const payload = await res.json();
+      const views = Array.isArray(payload?.views)
+        ? payload.views
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      const total = Number(payload?.total ?? views.length);
+      const limit = Number(payload?.limit ?? 6);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+
+      return {
+        posts: views.map(mapApiViewToPost),
+        total,
+        totalPages,
+      };
     },
-    [endpoint]
+    [endpoint, token]
   );
 
   useEffect(() => {
@@ -234,7 +293,7 @@ export const Home: React.FC = () => {
     const loadCategories = async () => {
       try {
         const response =
-          await fetch('http://localhost:3000/api/categories');
+          await fetch(`${API_BASE}/categories`);
 
         if (!response.ok) {
           throw new Error(
@@ -284,7 +343,7 @@ export const Home: React.FC = () => {
     const loadHashtags = async () => {
       try {
         const response =
-          await fetch('http://localhost:3000/api/hashtags');
+          await fetch(`${API_BASE}/hashtags`);
 
         if (!response.ok) {
           throw new Error(
@@ -446,7 +505,9 @@ export const Home: React.FC = () => {
     postId: string
   ) => {
     if (!isAuthenticated || !token) {
-      navigate('/login');
+      navigate('/login', {
+        state: { from: location },
+      });
       return;
     }
 
@@ -468,7 +529,7 @@ export const Home: React.FC = () => {
     try {
       const response =
         await fetch(
-          `http://localhost:3000/api/views/${postId}/favorite`,
+          `${API_BASE}/views/${postId}/favorite`,
           {
             method:
               currentlyFavorite
@@ -578,8 +639,24 @@ export const Home: React.FC = () => {
       ...post,
       isFavorite:
         isAuthenticated &&
-        favoriteIds.has(post.id),
+        (favoriteIds.has(post.id) || Boolean(post.isFavorite)),
     })) ?? [];
+
+  useEffect(() => {
+    if (!data?.posts?.length || !isAuthenticated) {
+      return;
+    }
+
+    setFavoriteIds((previous) => {
+      const next = new Set(previous);
+      data.posts.forEach((post) => {
+        if (post.isFavorite) {
+          next.add(post.id);
+        }
+      });
+      return next;
+    });
+  }, [data, isAuthenticated]);
 
   return (
     <div
@@ -708,7 +785,7 @@ export const Home: React.FC = () => {
 
                     {user && (
                       <Link
-                        to={`/authors/${user.id}`}
+                        to="/profile"
                         onClick={() =>
                           setProfileMenuOpen(
                             false
@@ -716,6 +793,19 @@ export const Home: React.FC = () => {
                         }
                       >
                         Perfil
+                      </Link>
+                    )}
+
+                    {user && (
+                      <Link
+                        to={`/authors/${user.id}`}
+                        onClick={() =>
+                          setProfileMenuOpen(
+                            false
+                          )
+                        }
+                      >
+                        Mis publicaciones
                       </Link>
                     )}
 
@@ -757,6 +847,23 @@ export const Home: React.FC = () => {
               contraposturas en tiempo real.
             </p>
           </div>
+
+          <button
+            type="button"
+            className="home-create-button home-create-button-main"
+            onClick={() => {
+              if (!isAuthenticated) {
+                navigate('/login', {
+                  state: { from: { pathname: '/views/new' } },
+                });
+                return;
+              }
+              navigate('/views/new');
+            }}
+          >
+            <Plus />
+            Crear publicación
+          </button>
 
         </header>
 
@@ -911,12 +1018,12 @@ export const Home: React.FC = () => {
                 Más recientes
               </option>
 
-              <option value="likesA">
-                Más likes Lado A
+              <option value="likes">
+                Más likes
               </option>
 
-              <option value="likesB">
-                Más likes Lado B
+              <option value="dislikes">
+                Más dislikes
               </option>
             </select>
 
@@ -987,14 +1094,7 @@ export const Home: React.FC = () => {
 
                       <ViewCard
                         post={post}
-                        isAuthenticated={
-                          isAuthenticated
-                        }
-                        onToggleFavorite={
-                          isAuthenticated
-                            ? toggleFavorite
-                            : undefined
-                        }
+                        onToggleFavorite={toggleFavorite}
                       />
 
                       <button

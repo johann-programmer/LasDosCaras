@@ -1,12 +1,29 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    headers: { "Content-Type": "application/json" },
+export async function apiFetch<T = unknown>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers ?? {}),
+    },
   });
 
-  if (!res.ok) throw new Error("Error en la API");
+  const body = await res.json().catch(() => null);
 
-  return res.json();
+  if (!res.ok) {
+    const message =
+      body?.error ||
+      body?.message ||
+      body?.details?.[0]?.message ||
+      'Error en la API';
+    throw new Error(message);
+  }
+
+  return body as T;
 }

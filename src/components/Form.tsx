@@ -1,4 +1,5 @@
 import { useForm } from "../hooks/useForm";
+import { PasswordInput } from "./PasswordInput";
 
 export default function Register() {
   const {
@@ -44,8 +45,7 @@ export default function Register() {
 
       <div>
         <label>Contraseña</label>
-        <input
-          type="password"
+        <PasswordInput
           {...register("password", {
             required: "La contraseña es obligatoria",
             minLength: {

@@ -20,35 +20,20 @@
 }
 
 /* =====================================================
-   TEMA OSCURO
+   Contenedores de tema (tokens globales en theme.css)
    ===================================================== */
 
-.home-dark {
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(30, 64, 175, 0.12),
-      transparent 35%
-    ),
-    #080b12;
-
-  color: #f4f4f5;
-}
-
-/* =====================================================
-   TEMA CLARO
-   ===================================================== */
-
+.home-dark,
 .home-light {
   background:
     radial-gradient(
       circle at top left,
-      rgba(59, 130, 246, 0.08),
+      color-mix(in srgb, var(--app-accent-strong) 14%, transparent),
       transparent 35%
     ),
-    #f4f6f8;
+    var(--app-bg);
 
-  color: #18181b;
+  color: var(--app-text);
 }
 
 /* =====================================================
@@ -62,20 +47,18 @@
 
   width: 100%;
 
-  border-bottom: 1px solid
-    rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--home-navbar-border);
 
-  background: rgba(8, 11, 18, 0.92);
+  background: var(--home-navbar-bg);
 
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
 .home-light .home-navbar {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--home-navbar-bg);
 
-  border-bottom: 1px solid
-    rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--home-navbar-border);
 }
 
 .home-navbar-inner {
@@ -103,7 +86,7 @@
 
   text-decoration: none;
 
-  color: white;
+  color: var(--home-text-strong);
 
   font-size: 20px;
   font-weight: 800;
@@ -112,7 +95,7 @@
 }
 
 .home-light .home-logo {
-  color: #18181b;
+  color: var(--home-text-strong);
 }
 
 .home-logo-icon {
@@ -125,18 +108,13 @@
 
   border-radius: 11px;
 
-  background:
-    linear-gradient(
-      135deg,
-      #2563eb,
-      #3b82f6
-    );
+  background: var(--home-accent-strong);
 
-  color: white;
+  color: #ffffff;
 
   box-shadow:
     0 6px 20px
-    rgba(37, 99, 235, 0.3);
+    rgba(30, 64, 175, 0.28);
 }
 
 .home-logo-icon svg {
@@ -149,7 +127,7 @@
    ===================================================== */
 
 .home-categories-link {
-  color: #a1a1aa;
+  color: var(--home-text-muted);
 
   font-size: 14px;
   font-weight: 500;
@@ -162,16 +140,16 @@
 }
 
 .home-categories-link:hover {
-  color: #60a5fa;
+  color: var(--home-link-hover);
 }
 
 .home-light .home-categories-link {
-  color: #52525b;
+  color: var(--home-text-muted);
 }
 
 .home-light
   .home-categories-link:hover {
-  color: #2563eb;
+  color: var(--home-link);
 }
 
 /* =====================================================
@@ -199,7 +177,7 @@
 
   transform: translateY(-50%);
 
-  color: #71717a;
+  color: var(--home-text-muted);
 
   pointer-events: none;
 }
@@ -211,15 +189,15 @@
 
   padding: 12px 16px 12px 44px;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 13px;
 
   outline: none;
 
-  background: #111318;
+  background: var(--home-bg-elevated);
 
-  color: #f4f4f5;
+  color: var(--home-text);
 
   font-size: 14px;
 
@@ -230,32 +208,32 @@
 }
 
 .home-search input::placeholder {
-  color: #71717a;
+  color: var(--home-text-muted);
 }
 
 .home-search input:focus {
-  border-color: #2563eb;
+  border-color: var(--home-accent-strong);
 
-  background: #151820;
+  background: var(--home-bg-soft);
 
   box-shadow:
     0 0 0 3px
-    rgba(37, 99, 235, 0.12);
+    rgba(30, 64, 175, 0.2);
 }
 
 .home-light .home-search input {
-  background: #f8fafc;
+  background: var(--home-bg-soft);
 
-  border-color: #d4d4d8;
+  border-color: var(--home-border);
 
-  color: #18181b;
+  color: var(--home-text);
 }
 
 .home-light
   .home-search input:focus {
-  background: white;
+  background: var(--home-bg-elevated);
 
-  border-color: #2563eb;
+  border-color: var(--home-accent-strong);
 }
 
 /* =====================================================
@@ -281,13 +259,13 @@
   align-items: center;
   justify-content: center;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 11px;
 
-  background: #111318;
+  background: var(--home-bg-elevated);
 
-  color: #a1a1aa;
+  color: var(--home-text-muted);
 
   cursor: pointer;
 
@@ -304,11 +282,11 @@
 }
 
 .home-icon-button:hover {
-  color: white;
+  color: var(--home-text-strong);
 
-  border-color: #3f3f46;
+  border-color: var(--home-border);
 
-  background: #18181b;
+  background: var(--home-bg-card);
 }
 
 .home-icon-button:active {
@@ -341,31 +319,66 @@
 }
 
 .home-login-button {
-  border: 1px solid #2563eb;
+  border: 1px solid var(--home-accent-strong);
 
-  background: #2563eb;
+  background: var(--home-accent-strong);
 
-  color: white;
+  color: #ffffff;
 }
 
 .home-login-button:hover {
-  background: #1d4ed8;
+  background: #1e3a8a;
+  border-color: #1e3a8a;
 }
 
 .home-register-button {
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   background: transparent;
 
-  color: #d4d4d8;
+  color: var(--home-text);
 }
 
 .home-register-button:hover {
-  background: #18181b;
+  background: var(--home-bg-card);
 }
 
 .home-login-button svg,
 .home-register-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-create-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  border: 1px solid var(--home-success);
+  background: var(--home-success);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.15s ease,
+    background 0.2s ease;
+}
+
+.home-create-button:hover {
+  background: var(--home-success-hover);
+  border-color: var(--home-success-hover);
+}
+
+.home-create-button-main {
+  padding: 11px 16px;
+  font-size: 14px;
+}
+
+.home-create-button svg {
   width: 16px;
   height: 16px;
 }
@@ -376,6 +389,9 @@
 
 .home-profile {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .home-profile-button {
@@ -386,13 +402,13 @@
 
   padding: 10px 13px;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 11px;
 
-  background: #111318;
+  background: var(--home-bg-elevated);
 
-  color: #e4e4e7;
+  color: var(--home-text);
 
   font-size: 13px;
   font-weight: 700;
@@ -416,15 +432,15 @@
 
   overflow: hidden;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 13px;
 
-  background: #111318;
+  background: var(--home-bg-elevated);
 
   box-shadow:
     0 18px 45px
-    rgba(0, 0, 0, 0.45);
+    rgba(0, 0, 0, 0.25);
 }
 
 .home-profile-menu a,
@@ -444,7 +460,7 @@
 
   background: transparent;
 
-  color: #d4d4d8;
+  color: var(--home-text);
 
   text-decoration: none;
 
@@ -457,15 +473,15 @@
 }
 
 .home-profile-menu a:hover {
-  background: #18181b;
+  background: var(--home-bg-soft);
 }
 
 .home-profile-menu button {
-  color: #fb7185;
+  color: var(--home-danger);
 }
 
 .home-profile-menu button:hover {
-  background: rgba(159, 18, 48, 0.16);
+  background: var(--home-danger-bg);
 }
 
 .home-profile-menu svg {
@@ -491,15 +507,21 @@
    ===================================================== */
 
 .home-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+
   padding-bottom: 25px;
 
   margin-bottom: 25px;
 
-  border-bottom: 1px solid #27272a;
+  border-bottom: 1px solid var(--home-border);
 }
 
 .home-light .home-heading {
-  border-color: #d4d4d8;
+  border-color: var(--home-border);
 }
 
 .home-heading h1 {
@@ -510,7 +532,7 @@
 
   margin: 0;
 
-  color: #fafafa;
+  color: var(--home-text-strong);
 
   font-size: 31px;
   font-weight: 850;
@@ -519,20 +541,20 @@
 }
 
 .home-light .home-heading h1 {
-  color: #18181b;
+  color: var(--home-text-strong);
 }
 
 .home-heading h1 svg {
   width: 31px;
   height: 31px;
 
-  color: #3b82f6;
+  color: var(--home-accent);
 }
 
 .home-heading p {
   margin: 8px 0 0;
 
-  color: #71717a;
+  color: var(--home-text-muted);
 
   font-size: 14px;
   line-height: 1.6;
@@ -556,26 +578,21 @@
 
   padding: 16px;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 16px;
 
-  background:
-    linear-gradient(
-      145deg,
-      #101218,
-      #0c0e13
-    );
+  background: var(--home-bg-elevated);
 
   box-shadow:
     0 10px 30px
-    rgba(0, 0, 0, 0.18);
+    rgba(0, 0, 0, 0.12);
 }
 
 .home-light .home-filters {
-  border-color: #d4d4d8;
+  border-color: var(--home-border);
 
-  background: white;
+  background: var(--home-bg-elevated);
 
   box-shadow:
     0 8px 25px
@@ -597,7 +614,7 @@
   width: 17px;
   height: 17px;
 
-  color: #71717a;
+  color: var(--home-text-muted);
 }
 
 .home-filter-item select,
@@ -608,15 +625,15 @@
 
   box-sizing: border-box;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 10px;
 
   outline: none;
 
-  background: #15171d;
+  background: var(--home-bg-soft);
 
-  color: #d4d4d8;
+  color: var(--home-text);
 
   padding: 0 12px;
 
@@ -630,11 +647,11 @@
 
 .home-filter-item select:focus,
 .home-hashtag input:focus {
-  border-color: #2563eb;
+  border-color: var(--home-accent-strong);
 
   box-shadow:
     0 0 0 3px
-    rgba(37, 99, 235, 0.1);
+    rgba(30, 64, 175, 0.18);
 }
 
 .home-light
@@ -643,11 +660,11 @@
 .home-light
   .home-hashtag
   input {
-  background: #f8fafc;
+  background: var(--home-bg-soft);
 
-  border-color: #d4d4d8;
+  border-color: var(--home-border);
 
-  color: #27272a;
+  color: var(--home-text);
 }
 
 /* =====================================================
@@ -668,15 +685,15 @@
 }
 
 .home-hashtag-suggestions button {
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 999px;
 
   padding: 6px 10px;
 
-  background: #18181b;
+  background: var(--home-bg-card);
 
-  color: #a1a1aa;
+  color: var(--home-text-muted);
 
   font-family: inherit;
 
@@ -686,9 +703,9 @@
 }
 
 .home-hashtag-suggestions button:hover {
-  background: #27272a;
+  background: var(--home-bg-soft);
 
-  color: white;
+  color: var(--home-text-strong);
 }
 
 .home-active-hashtag {
@@ -705,12 +722,12 @@
 
   border-radius: 999px;
 
-  background:
-    rgba(37, 99, 235, 0.14);
+  background: var(--home-chip-bg);
 
-  color: #60a5fa;
+  color: var(--home-chip-fg);
 
   font-size: 11px;
+  font-weight: 650;
 }
 
 .home-active-hashtag button {
@@ -727,7 +744,7 @@
 
   background: transparent;
 
-  color: #60a5fa;
+  color: var(--home-chip-fg);
 
   cursor: pointer;
 }
@@ -783,13 +800,13 @@
   align-items: center;
   justify-content: center;
 
-  border: 1px solid #3f3f46;
+  border: 1px solid var(--home-border);
 
   border-radius: 9px;
 
-  background: rgba(9, 10, 14, 0.92);
+  background: var(--home-bg-elevated);
 
-  color: #a1a1aa;
+  color: var(--home-text-muted);
 
   cursor: pointer;
 
@@ -807,9 +824,9 @@
 }
 
 .home-share-button:hover {
-  color: white;
+  color: var(--home-text-strong);
 
-  background: #18181b;
+  background: var(--home-bg-card);
 
   transform: translateY(-2px);
 }
@@ -821,16 +838,16 @@
 .home-loading-card {
   height: 320px;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 16px;
 
   background:
     linear-gradient(
       100deg,
-      #111318 25%,
-      #191c24 50%,
-      #111318 75%
+      var(--home-bg-elevated) 25%,
+      var(--home-bg-soft) 50%,
+      var(--home-bg-elevated) 75%
     );
 
   background-size: 200% 100%;
@@ -856,17 +873,15 @@
 .home-error {
   padding: 30px;
 
-  border: 1px solid
-    rgba(244, 63, 94, 0.3);
+  border: 1px solid var(--home-danger-border);
 
   border-radius: 15px;
 
-  background:
-    rgba(127, 29, 29, 0.16);
+  background: var(--home-danger-bg);
 
   text-align: center;
 
-  color: #fda4af;
+  color: var(--home-danger);
 }
 
 .home-error p {
@@ -884,22 +899,20 @@
 
   padding: 8px 12px;
 
-  border: 1px solid
-    rgba(244, 63, 94, 0.35);
+  border: 1px solid var(--home-danger-border);
 
   border-radius: 9px;
 
-  background:
-    rgba(127, 29, 29, 0.3);
+  background: transparent;
 
-  color: #fda4af;
+  color: var(--home-danger);
 
   cursor: pointer;
+  font-weight: 650;
 }
 
 .home-error button:hover {
-  background:
-    rgba(127, 29, 29, 0.5);
+  background: rgba(159, 18, 57, 0.12);
 }
 
 .home-error svg {
@@ -920,11 +933,11 @@
 
   min-height: 250px;
 
-  border: 1px dashed #3f3f46;
+  border: 1px dashed var(--home-border);
 
   border-radius: 16px;
 
-  color: #71717a;
+  color: var(--home-text-muted);
 
   text-align: center;
 }
@@ -935,7 +948,7 @@
 
   margin-bottom: 12px;
 
-  color: #3b82f6;
+  color: var(--home-accent);
 }
 
 .home-empty p {
@@ -961,13 +974,13 @@
 .home-pagination button {
   padding: 9px 15px;
 
-  border: 1px solid #27272a;
+  border: 1px solid var(--home-border);
 
   border-radius: 9px;
 
-  background: #111318;
+  background: var(--home-bg-elevated);
 
-  color: #d4d4d8;
+  color: var(--home-text);
 
   font-family: inherit;
 
@@ -977,19 +990,19 @@
 }
 
 .home-pagination button:hover:not(:disabled) {
-  background: #18181b;
+  background: var(--home-bg-card);
 
-  border-color: #3f3f46;
+  border-color: var(--home-border);
 }
 
 .home-pagination button:disabled {
-  opacity: 0.35;
+  opacity: 0.45;
 
   cursor: not-allowed;
 }
 
 .home-pagination span {
-  color: #71717a;
+  color: var(--home-text-muted);
 
   font-family: monospace;
 
@@ -1012,19 +1025,19 @@
 
   padding: 11px 17px;
 
-  border: 1px solid #3f3f46;
+  border: 1px solid var(--home-border);
 
   border-radius: 10px;
 
-  background: #18181b;
+  background: var(--home-bg-elevated);
 
-  color: white;
+  color: var(--home-text-strong);
 
   font-size: 13px;
 
   box-shadow:
     0 10px 35px
-    rgba(0, 0, 0, 0.45);
+    rgba(0, 0, 0, 0.25);
 
   animation:
     home-message-in 0.2s ease;
@@ -1106,16 +1119,23 @@
   }
 
   .home-login-button,
-  .home-register-button {
+  .home-register-button,
+  .home-create-button:not(.home-create-button-main) {
     padding: 9px;
 
     font-size: 0;
   }
 
   .home-login-button svg,
-  .home-register-button svg {
+  .home-register-button svg,
+  .home-create-button svg {
     width: 17px;
     height: 17px;
+  }
+
+  .home-create-button-main {
+    font-size: 13px;
+    padding: 10px 12px;
   }
 
   .home-heading h1 {

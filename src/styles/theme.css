@@ -1,0 +1,310 @@
+/* =====================================================
+   Las Dos Caras — tema global (contraste texto ≥ 6:1)
+   html.dark  → tema oscuro
+   :root      → tema claro (sin clase dark)
+   ===================================================== */
+
+:root {
+  color-scheme: light;
+
+  --app-bg: #f4f6f8;
+  --app-bg-elevated: #ffffff;
+  --app-bg-soft: #f8fafc;
+  --app-bg-card: #ffffff;
+  --app-border: #a1a1aa;
+  --app-text: #18181b;
+  --app-text-strong: #09090b;
+  --app-text-muted: #3f3f46;
+  --app-text-subtle: #52525b;
+  --app-link: #1e3a8a;
+  --app-link-hover: #1e40af;
+  --app-accent: #1e3a8a;
+  --app-accent-strong: #1e3a8a;
+  --app-on-accent: #ffffff;
+  --app-success: #065f46;
+  --app-success-hover: #064e3b;
+  --app-danger: #9f1239;
+  --app-danger-bg: #fff1f2;
+  --app-danger-border: #be123c;
+  --app-warning: #92400e;
+  --app-warning-bg: #fffbeb;
+  --app-side-a-fg: #065f46;
+  --app-side-a-bg: #ecfdf5;
+  --app-side-a-border: #047857;
+  --app-side-b-fg: #312e81;
+  --app-side-b-bg: #eef2ff;
+  --app-side-b-border: #4338ca;
+  --app-chip-bg: #dbeafe;
+  --app-chip-fg: #1e3a8a;
+  --app-navbar-bg: rgba(255, 255, 255, 0.96);
+  --app-navbar-border: rgba(24, 24, 27, 0.18);
+  --app-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --app-font:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+
+  /* aliases usados por Home / ViewCard */
+  --home-bg: var(--app-bg);
+  --home-bg-elevated: var(--app-bg-elevated);
+  --home-bg-soft: var(--app-bg-soft);
+  --home-bg-card: var(--app-bg-card);
+  --home-border: var(--app-border);
+  --home-text: var(--app-text);
+  --home-text-strong: var(--app-text-strong);
+  --home-text-muted: var(--app-text-muted);
+  --home-text-subtle: var(--app-text-subtle);
+  --home-link: var(--app-link);
+  --home-link-hover: var(--app-link-hover);
+  --home-accent: var(--app-accent);
+  --home-accent-strong: var(--app-accent-strong);
+  --home-success: var(--app-success);
+  --home-success-hover: var(--app-success-hover);
+  --home-danger: var(--app-danger);
+  --home-danger-bg: var(--app-danger-bg);
+  --home-danger-border: var(--app-danger-border);
+  --home-side-a-fg: var(--app-side-a-fg);
+  --home-side-a-bg: var(--app-side-a-bg);
+  --home-side-a-border: var(--app-side-a-border);
+  --home-side-b-fg: var(--app-side-b-fg);
+  --home-side-b-bg: var(--app-side-b-bg);
+  --home-side-b-border: var(--app-side-b-border);
+  --home-chip-bg: var(--app-chip-bg);
+  --home-chip-fg: var(--app-chip-fg);
+  --home-navbar-bg: var(--app-navbar-bg);
+  --home-navbar-border: var(--app-navbar-border);
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --app-bg: #080b12;
+  --app-bg-elevated: #111318;
+  --app-bg-soft: #15171d;
+  --app-bg-card: #18181b;
+  --app-border: #3f3f46;
+  --app-text: #f4f4f5;
+  --app-text-strong: #fafafa;
+  --app-text-muted: #a3a3a3;
+  --app-text-subtle: #b4b4b8;
+  --app-link: #93c5fd;
+  --app-link-hover: #bfdbfe;
+  --app-accent: #93c5fd;
+  --app-accent-strong: #1e40af;
+  --app-on-accent: #ffffff;
+  --app-success: #065f46;
+  --app-success-hover: #064e3b;
+  --app-danger: #fecdd3;
+  --app-danger-bg: #450a0a;
+  --app-danger-border: #9f1239;
+  --app-warning: #fde68a;
+  --app-warning-bg: #451a03;
+  --app-side-a-fg: #6ee7b7;
+  --app-side-a-bg: #052e1c;
+  --app-side-a-border: #047857;
+  --app-side-b-fg: #c7d2fe;
+  --app-side-b-bg: #1e1b4b;
+  --app-side-b-border: #4338ca;
+  --app-chip-bg: #0b1220;
+  --app-chip-fg: #93c5fd;
+  --app-navbar-bg: rgba(8, 11, 18, 0.96);
+  --app-navbar-border: rgba(255, 255, 255, 0.14);
+  --app-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font);
+}
+
+#root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  min-height: 100svh;
+  text-align: initial;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+/* Shell genérico para páginas internas */
+.app-page {
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 24px 16px 48px;
+  text-align: left;
+  color: var(--app-text);
+  background:
+    radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--app-accent-strong) 14%, transparent),
+      transparent 35%
+    ),
+    var(--app-bg);
+  font-family: var(--app-font);
+}
+
+.app-page-container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-page-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 60vh;
+  text-align: center;
+}
+
+.app-back,
+.app-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--app-text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.app-back:hover,
+.app-link:hover {
+  color: var(--app-link);
+}
+
+.app-card {
+  background: var(--app-bg-card);
+  border: 1px solid var(--app-border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--app-shadow);
+}
+
+.app-title {
+  margin: 0;
+  color: var(--app-text-strong);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app-muted {
+  margin: 0;
+  color: var(--app-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.app-error {
+  margin: 0;
+  color: var(--app-danger);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.app-btn:hover:not(:disabled) {
+  background: var(--app-bg-soft);
+}
+
+.app-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.app-btn-primary {
+  border-color: var(--app-accent-strong);
+  background: var(--app-accent-strong);
+  color: var(--app-on-accent);
+}
+
+.app-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.92);
+  background: var(--app-accent-strong);
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--app-chip-bg);
+  color: var(--app-chip-fg);
+  border: 1px solid var(--app-border);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.app-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-bg-elevated);
+  color: var(--app-text-muted);
+  cursor: pointer;
+}
+
+.app-icon-btn:hover {
+  color: var(--app-text-strong);
+}
+
+@media (min-width: 768px) {
+  .app-page {
+    padding: 32px 24px 56px;
+  }
+}

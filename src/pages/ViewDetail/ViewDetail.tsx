@@ -1,76 +1,320 @@
-// src/pages/ViewDetail/ViewDetail.tsx
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useFetch } from '../../hooks/useFetch';
-import { cacheService } from '../../services/cacheService';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  ThumbsUp,
-  ThumbsDown,
-  Share2,
-  Calendar,
-  User,
-  ExternalLink,
-  MessageSquare,
   ArrowLeft,
+  Calendar,
   CheckCircle2,
+  ExternalLink,
+  Loader2,
+  MessageSquare,
+  Share2,
+  ThumbsDown,
+  ThumbsUp,
+  User,
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { cacheService } from '../../services/cacheService';
+import './ViewDetail.css';
+
+const API_BASE = 'http://localhost:3000/api';
+
+type ReactionType = 'LIKE' | 'DISLIKE' | null;
+type ApiSide = 'a' | 'b';
 
 interface Source {
   title: string;
   url: string;
+  type?: string;
 }
 
-interface Comment {
+interface SideView {
+  title: string;
+  content: string;
+  likeCount: number;
+  dislikeCount: number;
+  myReaction: ReactionType;
+  sources: Source[];
+}
+
+interface ReplyComment {
   id: string;
   authorName: string;
   createdAt: string;
   text: string;
-  side: 'A' | 'B';
+}
+
+interface ThreadComment {
+  id: string;
+  authorName: string;
+  createdAt: string;
+  text: string;
+  replies: ReplyComment[];
+}
+
+interface ThreadItem {
+  id: string;
+  title?: string;
+  createdAt: string;
+  comments: ThreadComment[];
 }
 
 interface ViewDetailData {
   id: string;
   title: string;
-  summary: string;
   categoryName: string;
   categoryId: string;
   authorName: string;
   authorId: string;
   createdAt: string;
   youtubeUrl?: string;
-  sideA: {
-    title: string;
-    content: string;
-    likes: number;
-    sources: Source[];
-  };
-  sideB: {
-    title: string;
-    content: string;
-    likes: number;
-    sources: Source[];
-  };
-  comments: Comment[];
+  sideA: SideView;
+  sideB: SideView;
+  hashtags: string[];
 }
+
+const getYouTubeEmbedUrl = (url?: string) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = parsed.pathname.slice(1).split('/')[0];
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (parsed.pathname === '/watch') {
+        const id = parsed.searchParams.get('v');
+        return id ? `https://www.youtube.com/embed/${id}` : null;
+      }
+      if (parsed.pathname.startsWith('/embed/')) {
+        const id = parsed.pathname.split('/')[2];
+        return id ? `https://www.youtube.com/embed/${id}` : null;
+      }
+      if (parsed.pathname.startsWith('/shorts/')) {
+        const id = parsed.pathname.split('/')[2];
+        return id ? `https://www.youtube.com/embed/${id}` : null;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const mapSide = (side: any): SideView => ({
+  title: side?.title ?? '',
+  content: side?.description ?? side?.content ?? '',
+  likeCount: side?.likeCount ?? 0,
+  dislikeCount: side?.dislikeCount ?? 0,
+  myReaction: (side?.myReaction as ReactionType) ?? null,
+  sources: Array.isArray(side?.sources)
+    ? side.sources.map((source: any) => ({
+        title: source.label ?? source.title ?? source.url ?? 'Fuente',
+        url: source.url ?? '',
+        type: source.type,
+      }))
+    : [],
+});
+
+const mapApiViewToDetail = (view: any): ViewDetailData => {
+  const sides = Array.isArray(view?.sides) ? view.sides : [];
+  const sideA = sides.find((side: any) => side.type === 'SIDE') ?? {};
+  const sideB =
+    sides.find((side: any) => side.type === 'COUNTERPART') ?? {};
+
+  const mappedSideA = mapSide(sideA);
+  const mappedSideB = mapSide(sideB);
+
+  const youtubeSource = [...mappedSideA.sources, ...mappedSideB.sources].find(
+    (source) =>
+      source.type === 'YOUTUBE' || Boolean(getYouTubeEmbedUrl(source.url))
+  );
+
+  return {
+    id: String(view.id),
+    title:
+      mappedSideA.title && mappedSideB.title
+        ? `${mappedSideA.title} vs ${mappedSideB.title}`
+        : mappedSideA.title || mappedSideB.title || 'Publicación',
+    categoryName: view.category?.name ?? '',
+    categoryId: String(view.categoryId ?? view.category?.id ?? ''),
+    authorName: view.author?.name ?? 'Autor',
+    authorId: String(view.authorId ?? view.author?.id ?? ''),
+    createdAt: view.createdAt ?? new Date().toISOString(),
+    youtubeUrl: youtubeSource?.url,
+    sideA: mappedSideA,
+    sideB: mappedSideB,
+    hashtags: Array.isArray(view.hashtags)
+      ? view.hashtags.map((tag: any) =>
+          typeof tag === 'string' ? tag : tag?.name ?? ''
+        )
+      : [],
+  };
+};
+
+const mapComment = (comment: any): ThreadComment => ({
+  id: String(comment.id),
+  authorName: comment.user?.name ?? 'Usuario',
+  createdAt: comment.createdAt ?? new Date().toISOString(),
+  text: comment.content ?? '',
+  replies: Array.isArray(comment.replies)
+    ? comment.replies.map((reply: any) => ({
+        id: String(reply.id),
+        authorName: reply.user?.name ?? 'Usuario',
+        createdAt: reply.createdAt ?? new Date().toISOString(),
+        text: reply.content ?? '',
+      }))
+    : [],
+});
+
+const mapThreads = (threads: any[]): ThreadItem[] =>
+  threads.map((thread) => ({
+    id: String(thread.id),
+    title: thread.title || undefined,
+    createdAt: thread.createdAt ?? new Date().toISOString(),
+    comments: Array.isArray(thread.comments)
+      ? thread.comments.map(mapComment)
+      : [],
+  }));
+
+const formatDate = (value: string) =>
+  new Date(value).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 
 export const ViewDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { token, isAuthenticated } = useAuth();
+
   const [activeTab, setActiveTab] = useState<'both' | 'A' | 'B'>('both');
   const [newComment, setNewComment] = useState('');
-  const [selectedSide, setSelectedSide] = useState<'A' | 'B'>('A');
   const [copied, setCopied] = useState(false);
+  const [data, setData] = useState<ViewDetailData | null>(null);
+  const [threads, setThreads] = useState<ThreadItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [reactingSide, setReactingSide] = useState<ApiSide | null>(null);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    threadId: string;
+    parentId: string;
+  } | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
 
-  // Petición de datos de la publicación
-  const { data, loading, error } = useFetch<ViewDetailData>(`/views/${id}`);
+  const authHeaders = useMemo(
+    () =>
+      token
+        ? {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          }
+        : { 'Content-Type': 'application/json' },
+    [token]
+  );
 
-  // Registrar automáticamente en el historial FIFO local (lasdoscaras_history)
+  const requireAuth = useCallback(() => {
+    if (isAuthenticated && token) return true;
+    navigate('/login', { state: { from: location }, replace: false });
+    return false;
+  }, [isAuthenticated, token, navigate, location]);
+
+  const loadThreads = useCallback(async (viewId: string) => {
+    const response = await fetch(`${API_BASE}/views/${viewId}/threads`);
+    if (!response.ok) {
+      throw new Error('No se pudieron cargar los comentarios.');
+    }
+    const payload = await response.json();
+    const list = Array.isArray(payload?.threads) ? payload.threads : [];
+    setThreads(mapThreads(list));
+  }, []);
+
+  useEffect(() => {
+    if (!id) {
+      setError('Publicación no encontrada.');
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadView = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(`${API_BASE}/views/${id}`, {
+          headers: token
+            ? { Authorization: `Bearer ${token}` }
+            : undefined,
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error || 'No se pudo cargar la publicación.');
+        }
+
+        const payload = await response.json();
+        if (cancelled) return;
+
+        const view = payload?.view ?? payload;
+        if (!view?.id) {
+          throw new Error('La API no devolvió la publicación.');
+        }
+
+        setData(mapApiViewToDetail(view));
+        await loadThreads(String(view.id));
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'No se pudo cargar la publicación.'
+          );
+          setData(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadView();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, token, loadThreads]);
+
   useEffect(() => {
     if (id && data) {
       cacheService.addToHistory(id);
     }
   }, [id, data]);
 
-  // Manejador de Web Share API con fallback a portapapeles
+  const embedUrl = useMemo(
+    () => getYouTubeEmbedUrl(data?.youtubeUrl),
+    [data?.youtubeUrl]
+  );
+
+  const commentsCount = useMemo(
+    () =>
+      threads.reduce(
+        (total, thread) =>
+          total +
+          thread.comments.reduce(
+            (sum, comment) => sum + 1 + comment.replies.length,
+            0
+          ),
+        0
+      ),
+    [threads]
+  );
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -88,274 +332,518 @@ export const ViewDetail: React.FC = () => {
     }
   };
 
+  const handleReaction = async (
+    side: ApiSide,
+    type: 'like' | 'dislike'
+  ) => {
+    if (!id || !data) return;
+    if (!requireAuth()) return;
+
+    setActionError(null);
+    setReactingSide(side);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/views/${id}/sides/${side}/${type}`,
+        {
+          method: 'POST',
+          headers: authHeaders,
+        }
+      );
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(
+          body?.error || 'No se pudo registrar la reacción.'
+        );
+      }
+
+      const result = await response.json();
+      const sideKey = side === 'a' ? 'sideA' : 'sideB';
+
+      setData((previous) => {
+        if (!previous) return previous;
+        return {
+          ...previous,
+          [sideKey]: {
+            ...previous[sideKey],
+            likeCount: result.likeCount ?? previous[sideKey].likeCount,
+            dislikeCount:
+              result.dislikeCount ?? previous[sideKey].dislikeCount,
+            myReaction: (result.myReaction as ReactionType) ?? null,
+          },
+        };
+      });
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo registrar la reacción.'
+      );
+    } finally {
+      setReactingSide(null);
+    }
+  };
+
+  const handleCreateComment = async () => {
+    if (!id || !newComment.trim()) return;
+    if (!requireAuth()) return;
+
+    setSubmittingComment(true);
+    setActionError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/views/${id}/threads`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ content: newComment.trim() }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(
+          body?.error || 'No se pudo publicar el comentario.'
+        );
+      }
+
+      setNewComment('');
+      await loadThreads(id);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo publicar el comentario.'
+      );
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleCreateReply = async () => {
+    if (!id || !replyingTo || !replyText.trim()) return;
+    if (!requireAuth()) return;
+
+    setSubmittingReply(true);
+    setActionError(null);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/views/${id}/threads/${replyingTo.threadId}/comments`,
+        {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            content: replyText.trim(),
+            parentId: replyingTo.parentId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'No se pudo publicar la respuesta.');
+      }
+
+      setReplyText('');
+      setReplyingTo(null);
+      await loadThreads(id);
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo publicar la respuesta.'
+      );
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-zinc-100 p-6 flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="view-detail-page view-detail-centered">
+        <div className="view-detail-spinner" />
+        <p>Cargando publicación...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-black text-zinc-100 p-8 max-w-4xl mx-auto text-center">
-        <p className="text-rose-400 mb-4">No se pudo cargar la publicación solicitada.</p>
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white">
-          <ArrowLeft className="w-4 h-4" /> Volver al Tablero Principal
+      <div className="view-detail-page view-detail-centered">
+        <p className="view-detail-error">
+          {error || 'No se pudo cargar la publicación solicitada.'}
+        </p>
+        <Link to="/" className="view-detail-back">
+          <ArrowLeft size={16} /> Volver al Tablero Principal
         </Link>
       </div>
     );
   }
 
-  // Extraer ID de video de YouTube si existe la URL
-  const getYouTubeEmbedUrl = (url?: string) => {
-    if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? `https://www.youtube.com/embed/${match[2]}` : null;
-  };
+  const showSideA = activeTab === 'both' || activeTab === 'A';
+  const showSideB = activeTab === 'both' || activeTab === 'B';
 
-  const embedUrl = getYouTubeEmbedUrl(data.youtubeUrl);
+  const renderSide = (
+    sideKey: 'sideA' | 'sideB',
+    apiSide: ApiSide,
+    label: string
+  ) => {
+    const side = data[sideKey];
+    const busy = reactingSide === apiSide;
 
-  return (
-    <div className="min-h-screen bg-black text-zinc-100 p-6 md:p-10 max-w-6xl mx-auto space-y-8">
-      {/* Botón Volver y Categoría */}
-      <div className="flex items-center justify-between">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Volver
-        </Link>
-        <Link
-          to={`/categories/${data.categoryId}`}
-          className="text-xs font-semibold px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-md"
-        >
-          {data.categoryName}
-        </Link>
-      </div>
-
-      {/* Título y Metadata */}
-      <header className="space-y-4">
-        <h1 className="text-3xl md:text-5xl font-black text-white leading-tight">{data.title}</h1>
-        <p className="text-zinc-400 text-base md:text-lg leading-relaxed">{data.summary}</p>
-
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-2 text-xs text-zinc-500 border-b border-zinc-800 pb-6">
-          <div className="flex items-center gap-4">
-            <Link to={`/authors/${data.authorId}`} className="flex items-center gap-1.5 hover:text-zinc-300">
-              <User className="w-4 h-4" /> <span>{data.authorName}</span>
-            </Link>
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" /> {new Date(data.createdAt).toLocaleDateString()}
+    return (
+      <section
+        className={`view-detail-side ${
+          apiSide === 'a' ? 'view-detail-side-a' : 'view-detail-side-b'
+        }`}
+      >
+        <div>
+          <div className="view-detail-side-top">
+            <span
+              className={`view-detail-badge ${
+                apiSide === 'a'
+                  ? 'view-detail-badge-a'
+                  : 'view-detail-badge-b'
+              }`}
+            >
+              {label}
             </span>
           </div>
+          <h2>{side.title}</h2>
+          <p className="view-detail-side-body">{side.content}</p>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors"
+        <div className="view-detail-reactions">
+          <button
+            type="button"
+            className={`view-detail-reaction-btn is-like ${
+              side.myReaction === 'LIKE' ? 'is-active' : ''
+            }`}
+            onClick={() => handleReaction(apiSide, 'like')}
+            disabled={busy}
+            aria-pressed={side.myReaction === 'LIKE'}
+          >
+            {busy ? <Loader2 size={14} className="is-spinning" /> : <ThumbsUp size={14} />}
+            <span>{side.likeCount}</span>
+            <span className="view-detail-reaction-label">Me gusta</span>
+          </button>
+          <button
+            type="button"
+            className={`view-detail-reaction-btn is-dislike ${
+              side.myReaction === 'DISLIKE' ? 'is-active' : ''
+            }`}
+            onClick={() => handleReaction(apiSide, 'dislike')}
+            disabled={busy}
+            aria-pressed={side.myReaction === 'DISLIKE'}
+          >
+            {busy ? <Loader2 size={14} className="is-spinning" /> : <ThumbsDown size={14} />}
+            <span>{side.dislikeCount}</span>
+            <span className="view-detail-reaction-label">No me gusta</span>
+          </button>
+        </div>
+
+        {side.sources.length > 0 && (
+          <div className="view-detail-sources">
+            <h4>Fuentes y referencias</h4>
+            <ul>
+              {side.sources.map((source, index) => (
+                <li key={`${source.url}-${index}`}>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink size={12} />
+                    {source.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+    );
+  };
+
+  return (
+    <div className="view-detail-page">
+      <div className="view-detail-container">
+        <div className="view-detail-topline">
+          <Link to="/" className="view-detail-back">
+            <ArrowLeft size={16} /> Volver
+          </Link>
+          {data.categoryName && (
+            <Link
+              to={`/categories/${data.categoryId}`}
+              className="view-detail-category"
             >
-              {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+              {data.categoryName}
+            </Link>
+          )}
+        </div>
+
+        <header className="view-detail-header">
+          <h1>{data.title}</h1>
+
+          {data.hashtags.length > 0 && (
+            <div className="view-detail-hashtags">
+              {data.hashtags.map((tag) => (
+                <span key={tag} className="view-detail-chip">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="view-detail-meta">
+            <div className="view-detail-meta-left">
+              <Link
+                to={`/authors/${data.authorId}`}
+                className="view-detail-author"
+              >
+                <User size={14} />
+                <span>{data.authorName}</span>
+              </Link>
+              <span className="view-detail-meta-item">
+                <Calendar size={14} />
+                {new Date(data.createdAt).toLocaleDateString()}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className={`view-detail-share ${copied ? 'is-copied' : ''}`}
+              onClick={handleShare}
+            >
+              {copied ? <CheckCircle2 size={16} /> : <Share2 size={16} />}
               <span>{copied ? 'Copiado' : 'Compartir'}</span>
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Video Embed de YouTube (si aplica) */}
-      {embedUrl && (
-        <div className="aspect-video w-full rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950">
-          <iframe
-            src={embedUrl}
-            title="YouTube video player"
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      )}
-
-      {/* Selector de Vista (Ambas Posturas / Lado A / Lado B) */}
-      <div className="flex justify-center border-b border-zinc-800">
-        <div className="flex gap-2 p-1 bg-zinc-900 rounded-xl border border-zinc-800 mb-6">
-          <button
-            onClick={() => setActiveTab('both')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
-              activeTab === 'both' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Ambas Posturas
-          </button>
-          <button
-            onClick={() => setActiveTab('A')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
-              activeTab === 'A' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Solo Lado A
-          </button>
-          <button
-            onClick={() => setActiveTab('B')}
-            className={`px-4 py-2 text-xs font-semibold rounded-lg transition-colors ${
-              activeTab === 'B' ? 'bg-indigo-950 text-indigo-400 border border-indigo-800/50' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Solo Lado B
-          </button>
-        </div>
-      </div>
-
-      {/* Sección Enfrentada de Posturas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Lado A */}
-        {(activeTab === 'both' || activeTab === 'A') && (
-          <section className="bg-zinc-900/60 border border-emerald-900/30 rounded-2xl p-6 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/40">
-                  Lado A — Postura
-                </span>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950/40 border border-emerald-800/40 rounded-lg text-emerald-400 hover:bg-emerald-900/40 transition-colors text-xs font-bold">
-                  <ThumbsUp className="w-4 h-4" /> {data.sideA.likes}
-                </button>
-              </div>
-
-              <h2 className="text-xl font-bold text-white">{data.sideA.title}</h2>
-              <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-line">{data.sideA.content}</p>
-            </div>
-
-            {/* Fuentes Lado A */}
-            {data.sideA.sources.length > 0 && (
-              <div className="pt-4 border-t border-zinc-800/80">
-                <h4 className="text-xs font-semibold text-zinc-400 mb-2">Fuentes y Referencias:</h4>
-                <ul className="space-y-1">
-                  {data.sideA.sources.map((source, index) => (
-                    <li key={index}>
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:underline"
-                      >
-                        <ExternalLink className="w-3 h-3" /> {source.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
+        {actionError && (
+          <div className="view-detail-banner-error">{actionError}</div>
         )}
 
-        {/* Lado B */}
-        {(activeTab === 'both' || activeTab === 'B') && (
-          <section className="bg-zinc-900/60 border border-indigo-900/30 rounded-2xl p-6 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-indigo-400 bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-800/40">
-                  Lado B — Contrapostura
-                </span>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/40 border border-indigo-800/40 rounded-lg text-indigo-400 hover:bg-indigo-900/40 transition-colors text-xs font-bold">
-                  <ThumbsDown className="w-4 h-4" /> {data.sideB.likes}
-                </button>
-              </div>
-
-              <h2 className="text-xl font-bold text-white">{data.sideB.title}</h2>
-              <p className="text-zinc-300 text-sm leading-relaxed whitespace-pre-line">{data.sideB.content}</p>
-            </div>
-
-            {/* Fuentes Lado B */}
-            {data.sideB.sources.length > 0 && (
-              <div className="pt-4 border-t border-zinc-800/80">
-                <h4 className="text-xs font-semibold text-zinc-400 mb-2">Fuentes y Referencias:</h4>
-                <ul className="space-y-1">
-                  {data.sideB.sources.map((source, index) => (
-                    <li key={index}>
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:underline"
-                      >
-                        <ExternalLink className="w-3 h-3" /> {source.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
+        {!isAuthenticated && (
+          <div className="view-detail-banner-info">
+            <Link to="/login" state={{ from: location }}>
+              Inicia sesión
+            </Link>{' '}
+            para reaccionar o comentar.
+          </div>
         )}
-      </div>
 
-      {/* Hilo de Comentarios */}
-      <section className="pt-8 border-t border-zinc-800 space-y-6">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-blue-400" />
-          Debate y Comentarios ({data.comments.length})
-        </h3>
+        {embedUrl && (
+          <div className="view-detail-video">
+            <iframe
+              src={embedUrl}
+              title="YouTube video player"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        )}
 
-        {/* Publicar Comentario */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
-          <div className="flex gap-3">
+        <div className="view-detail-tabs-wrap">
+          <div className="view-detail-tabs" role="tablist">
             <button
-              onClick={() => setSelectedSide('A')}
-              className={`px-3 py-1 text-xs rounded-lg font-medium border transition-colors ${
-                selectedSide === 'A' ? 'bg-emerald-950 border-emerald-700 text-emerald-400' : 'border-zinc-800 text-zinc-400'
-              }`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'both'}
+              className={`view-detail-tab ${activeTab === 'both' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('both')}
             >
-              Apoyar Lado A
+              Ambas posturas
             </button>
             <button
-              onClick={() => setSelectedSide('B')}
-              className={`px-3 py-1 text-xs rounded-lg font-medium border transition-colors ${
-                selectedSide === 'B' ? 'bg-indigo-950 border-indigo-700 text-indigo-400' : 'border-zinc-800 text-zinc-400'
-              }`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'A'}
+              className={`view-detail-tab is-a ${activeTab === 'A' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('A')}
             >
-              Apoyar Lado B
+              Solo Lado A
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'B'}
+              className={`view-detail-tab is-b ${activeTab === 'B' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('B')}
+            >
+              Solo Lado B
             </button>
           </div>
+        </div>
 
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Aporta un argumento respetuoso al debate..."
-            className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-sm text-zinc-200 outline-none focus:border-zinc-700"
-            rows={3}
-          />
+        <div
+          className={`view-detail-sides ${activeTab === 'both' ? 'is-both' : ''}`}
+        >
+          {showSideA && renderSide('sideA', 'a', 'Lado A — Postura')}
+          {showSideB && renderSide('sideB', 'b', 'Lado B — Contrapostura')}
+        </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                if (!newComment.trim()) return;
-                console.log('Nuevo comentario enviado:', { text: newComment, side: selectedSide });
-                setNewComment('');
+        <section className="view-detail-comments">
+          <h3>
+            <MessageSquare size={20} />
+            Debate y comentarios ({commentsCount})
+          </h3>
+
+          <div className="view-detail-comment-box">
+            <textarea
+              value={newComment}
+              onChange={(event) => setNewComment(event.target.value)}
+              onFocus={() => {
+                if (!isAuthenticated) {
+                  requireAuth();
+                }
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
-            >
-              Publicar Comentario
-            </button>
-          </div>
-        </div>
+              placeholder={
+                isAuthenticated
+                  ? 'Aporta un argumento respetuoso al debate...'
+                  : 'Inicia sesión para comentar...'
+              }
+              rows={3}
+              readOnly={!isAuthenticated}
+              disabled={submittingComment}
+            />
 
-        {/* Listado de Comentarios */}
-        <div className="space-y-3">
-          {data.comments.map((comment) => (
-            <div key={comment.id} className="bg-zinc-900/40 border border-zinc-800/80 p-4 rounded-xl space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-zinc-300">{comment.authorName}</span>
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    comment.side === 'A'
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40'
-                      : 'bg-indigo-950 text-indigo-400 border border-indigo-800/40'
-                  }`}
-                >
-                  Postura Lado {comment.side}
-                </span>
-              </div>
-              <p className="text-zinc-300 text-sm">{comment.text}</p>
+            <div className="view-detail-comment-actions">
+              <button
+                type="button"
+                className="view-detail-submit"
+                onClick={() => {
+                  if (!requireAuth()) return;
+                  void handleCreateComment();
+                }}
+                disabled={
+                  submittingComment ||
+                  (isAuthenticated && !newComment.trim())
+                }
+              >
+                {submittingComment ? (
+                  <>
+                    <Loader2 size={16} className="is-spinning" />
+                    Publicando...
+                  </>
+                ) : (
+                  'Publicar comentario'
+                )}
+              </button>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          <div className="view-detail-comment-list">
+            {threads.length === 0 ? (
+              <p className="view-detail-empty-comments">
+                Todavía no hay comentarios en este debate.
+              </p>
+            ) : (
+              threads.map((thread) => (
+                <article key={thread.id} className="view-detail-thread">
+                  {thread.title && (
+                    <h4 className="view-detail-thread-title">
+                      {thread.title}
+                    </h4>
+                  )}
+
+                  {thread.comments.map((comment) => (
+                    <div key={comment.id} className="view-detail-comment-item">
+                      <div className="view-detail-comment-head">
+                        <span className="view-detail-comment-author">
+                          {comment.authorName}
+                        </span>
+                        <span className="view-detail-comment-date">
+                          {formatDate(comment.createdAt)}
+                        </span>
+                      </div>
+                      <p>{comment.text}</p>
+
+                      <div className="view-detail-comment-footer">
+                        <button
+                          type="button"
+                          className="view-detail-reply-btn"
+                          onClick={() => {
+                            if (!requireAuth()) return;
+                            setReplyingTo({
+                              threadId: thread.id,
+                              parentId: comment.id,
+                            });
+                            setReplyText('');
+                          }}
+                        >
+                          Responder
+                        </button>
+                      </div>
+
+                      {replyingTo?.parentId === comment.id && (
+                        <div className="view-detail-reply-box">
+                          <textarea
+                            value={replyText}
+                            onChange={(event) =>
+                              setReplyText(event.target.value)
+                            }
+                            placeholder="Escribe tu respuesta..."
+                            rows={2}
+                            disabled={submittingReply}
+                          />
+                          <div className="view-detail-reply-actions">
+                            <button
+                              type="button"
+                              className="view-detail-btn-secondary"
+                              onClick={() => {
+                                setReplyingTo(null);
+                                setReplyText('');
+                              }}
+                              disabled={submittingReply}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              className="view-detail-submit"
+                              onClick={handleCreateReply}
+                              disabled={
+                                submittingReply || !replyText.trim()
+                              }
+                            >
+                              {submittingReply ? 'Enviando...' : 'Responder'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {comment.replies.length > 0 && (
+                        <div className="view-detail-replies">
+                          {comment.replies.map((reply) => (
+                            <div
+                              key={reply.id}
+                              className="view-detail-reply-item"
+                            >
+                              <div className="view-detail-comment-head">
+                                <span className="view-detail-comment-author">
+                                  {reply.authorName}
+                                </span>
+                                <span className="view-detail-comment-date">
+                                  {formatDate(reply.createdAt)}
+                                </span>
+                              </div>
+                              <p>{reply.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 };
+
+export default ViewDetail;

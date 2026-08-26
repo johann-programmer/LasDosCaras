@@ -1,57 +1,77 @@
-.not-found-page {
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 2rem;
-    text-align: center;
+.not-found-page,
+.forbidden-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  text-align: center;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font);
 }
 
-.not-found-container {
-    max-width: 600px;
+.not-found-container,
+.forbidden-container {
+  max-width: 600px;
 }
 
-.not-found-code {
-    font-size: 8rem;
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: 1rem;
+.not-found-code,
+.forbidden-code {
+  font-size: 8rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 1rem;
+  color: var(--app-accent);
 }
 
-.not-found-container h1 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
+.not-found-container h1,
+.forbidden-container h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: var(--app-text-strong);
 }
 
-.not-found-container p {
-    font-size: 1.1rem;
-    line-height: 1.6;
-    margin-bottom: 2rem;
+.not-found-container p,
+.forbidden-container p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  color: var(--app-text-muted);
 }
 
-.not-found-button {
-    display: inline-block;
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: transform 0.2s ease;
+.not-found-button,
+.forbidden-container button {
+  display: inline-block;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--app-accent-strong);
+  background: var(--app-accent-strong);
+  color: var(--app-on-accent);
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+  font: inherit;
 }
 
-.not-found-button:hover {
-    transform: translateY(-2px);
+.not-found-button:hover,
+.forbidden-container button:hover {
+  filter: brightness(0.92);
 }
 
 @media (max-width: 768px) {
-    .not-found-code {
-        font-size: 6rem;
-    }
+  .not-found-code,
+  .forbidden-code {
+    font-size: 6rem;
+  }
 
-    .not-found-container h1 {
-        font-size: 1.6rem;
-    }
+  .not-found-container h1,
+  .forbidden-container h1 {
+    font-size: 1.6rem;
+  }
 
-    .not-found-container p {
-        font-size: 1rem;
-    }
+  .not-found-container p,
+  .forbidden-container p {
+    font-size: 1rem;
+  }
 }

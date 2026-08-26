@@ -8,23 +8,39 @@
  */
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
+import { PasswordInput } from "../../components/PasswordInput";
 
 import "./login.css";
 
 import logo from "../../assets/logo.png";
 
 
+type LoginLocationState = {
+  from?: { pathname?: string };
+  registered?: boolean;
+  email?: string;
+} | null;
+
 function Login() {
   const { login } = useAuth();
   const navigator = useNavigate();
+  const location = useLocation();
+  const state = location.state as LoginLocationState;
 
-  const [email, setEmail] = useState("");
+  const redirectTo = state?.from?.pathname || "/";
+
+  const [email, setEmail] = useState(state?.email ?? "");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(
+    state?.registered
+      ? "Cuenta creada y activada. Ya puedes iniciar sesión."
+      : ""
+  );
   const [loading, setLoading] = useState(false);
 
 const handleLogin = async (
@@ -33,6 +49,7 @@ const handleLogin = async (
   e.preventDefault();
 
   setError("");
+  setSuccess("");
   setLoading(true);
 
   try {
@@ -40,7 +57,7 @@ const handleLogin = async (
 
     console.log("Inicio de sesión exitoso");
 
-    navigator("/");
+    navigator(redirectTo, { replace: true });
   } catch (error) {
     if (error instanceof Error) {
       setError(error.message);
@@ -68,6 +85,12 @@ const handleLogin = async (
           Accede a tu cuenta de Las Dos Caras
         </p>
 
+        {success && (
+          <p className="login-success">
+            {success}
+          </p>
+        )}
+
         <form onSubmit={handleLogin}>
 
           <div className="input-group">
@@ -91,14 +114,14 @@ const handleLogin = async (
               Contraseña
             </label>
 
-            <input
+            <PasswordInput
               id="password"
-              type="password"
               placeholder="Ingrese su contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
