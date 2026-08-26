@@ -6,6 +6,7 @@ import {
   ThumbsDown,
   Calendar,
   User,
+  Share2,
 } from 'lucide-react';
 import './ViewCard.css';
 
@@ -28,11 +29,13 @@ export interface ViewPost {
 interface ViewCardProps {
   post: ViewPost;
   onToggleFavorite?: (id: string) => void;
+  onShare?: (id: string) => void;
 }
 
 export const ViewCard: React.FC<ViewCardProps> = ({
   post,
   onToggleFavorite,
+  onShare,
 }) => {
   return (
     <article className="view-card">
@@ -116,10 +119,29 @@ export const ViewCard: React.FC<ViewCardProps> = ({
             <User size={14} />
             <span>{post.authorName}</span>
           </Link>
-          <span className="view-card-date">
-            <Calendar size={14} />
-            {new Date(post.createdAt).toLocaleDateString()}
-          </span>
+
+          <div className="view-card-meta-right">
+            <span className="view-card-date">
+              <Calendar size={14} />
+              {new Date(post.createdAt).toLocaleDateString()}
+            </span>
+
+            {onShare && (
+              <button
+                type="button"
+                className="view-card-share"
+                title="Compartir"
+                aria-label="Compartir publicación"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onShare(post.id);
+                }}
+              >
+                <Share2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </article>

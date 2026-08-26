@@ -16,7 +16,6 @@ import {
   LogOut,
   ChevronDown,
   X,
-  Share2,
   Plus,
 } from 'lucide-react';
 
@@ -1095,20 +1094,8 @@ export const Home: React.FC = () => {
                       <ViewCard
                         post={post}
                         onToggleFavorite={toggleFavorite}
+                        onShare={sharePost}
                       />
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          sharePost(
-                            post.id
-                          )
-                        }
-                        title="Compartir"
-                        className="home-share-button"
-                      >
-                        <Share2 />
-                      </button>
 
                     </article>
                   ))}

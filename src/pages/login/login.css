@@ -120,7 +120,7 @@
   font-weight: 650;
 }
 
-.login-card button {
+.login-card button[type="submit"] {
   width: 100%;
   padding: 14px 18px;
   margin-top: 4px;
@@ -133,7 +133,7 @@
   cursor: pointer;
 }
 
-.login-card button:hover {
+.login-card button[type="submit"]:hover {
   filter: brightness(0.92);
 }
 
