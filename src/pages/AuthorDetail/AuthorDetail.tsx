@@ -2,23 +2,8 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useFetch } from '../../hooks/useFetch';
 import { ViewCard } from '../../components/ViewCard';
-import { mapApiViewToPost } from '../../utils/mapView';
 import { ArrowLeft, User, Calendar, FileText, RefreshCw } from 'lucide-react';
-
-const API_BASE = 'http://localhost:3000/api';
-
-interface AuthorInfo {
-  id: string;
-  name: string;
-  joinedAt: string;
-  totalPosts: number;
-}
-
-interface AuthorPageData {
-  author: AuthorInfo;
-  posts: ReturnType<typeof mapApiViewToPost>[];
-  totalPages: number;
-}
+import { getAuthorDetailData, type AuthorPageData } from '../../services/authorService';
 
 export const AuthorDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,56 +11,18 @@ export const AuthorDetail: React.FC = () => {
 
   const { data, loading, error, refetch } = useFetch<AuthorPageData>(
     async () => {
-      if (!id) {
-        throw new Error('Autor no especificado.');
-      }
-
-      const [authorRes, viewsRes] = await Promise.all([
-        fetch(`${API_BASE}/authors/${id}`),
-        fetch(
-          `${API_BASE}/views?autorId=${encodeURIComponent(id)}&page=${page}&limit=6&sort=recent`
-        ),
-      ]);
-
-      if (!authorRes.ok) {
-        const body = await authorRes.json().catch(() => null);
-        throw new Error(
-          body?.error || 'No se pudo obtener la información del autor.'
-        );
-      }
-
-      const authorPayload = await authorRes.json();
-      const author = authorPayload?.author ?? authorPayload;
-
-      if (!author?.id) {
-        throw new Error('La API no devolvió el autor.');
-      }
-
-      const viewsPayload = viewsRes.ok
-        ? await viewsRes.json()
-        : { views: [], total: 0, limit: 6 };
-
-      const views = Array.isArray(viewsPayload?.views)
-        ? viewsPayload.views
-        : [];
-      const total = Number(viewsPayload?.total ?? views.length);
-      const limit = Number(viewsPayload?.limit ?? 6);
-
-      return {
-        author: {
-          id: String(author.id),
-          name: author.name ?? 'Autor',
-          joinedAt: author.createdAt ?? new Date().toISOString(),
-          totalPosts: Number(
-            author.publishedViewsCount ?? total ?? 0
-          ),
-        },
-        posts: views.map(mapApiViewToPost),
-        totalPages: Math.max(1, Math.ceil(total / limit) || 1),
-      };
+      if (!id) throw new Error('Autor no especificado.');
+      return await getAuthorDetailData(id, page);
     },
     [id, page]
   );
+
+  const formatDate = (dateString: string) => {
+    const parsedDate = new Date(dateString);
+    return isNaN(parsedDate.getTime())
+      ? 'Fecha desconocida'
+      : parsedDate.toLocaleDateString();
+  };
 
   if (loading) {
     return (
@@ -88,9 +35,7 @@ export const AuthorDetail: React.FC = () => {
   if (error || !data) {
     return (
       <div className="app-page app-page-centered">
-        <p className="app-error">
-          {error || 'No se pudo cargar el perfil del autor.'}
-        </p>
+        <p className="app-error">{error || 'No se pudo cargar el perfil del autor.'}</p>
         <Link to="/" className="app-back">
           <ArrowLeft size={16} /> Volver al Tablero Principal
         </Link>
@@ -103,14 +48,7 @@ export const AuthorDetail: React.FC = () => {
   return (
     <div className="app-page">
       <div className="app-page-container">
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <Link to="/" className="app-back">
             <ArrowLeft size={16} /> Volver al Tablero
           </Link>
@@ -125,14 +63,7 @@ export const AuthorDetail: React.FC = () => {
         </div>
 
         <header className="app-card">
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              flexWrap: 'wrap',
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div
               style={{
                 width: 64,
@@ -163,24 +94,11 @@ export const AuthorDetail: React.FC = () => {
                   fontSize: 12,
                 }}
               >
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    gap: 6,
-                    alignItems: 'center',
-                  }}
-                >
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                   <Calendar size={14} />
-                  Miembro desde{' '}
-                  {new Date(author.joinedAt).toLocaleDateString()}
+                  Miembro desde {formatDate(author.joinedAt)}
                 </span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    gap: 6,
-                    alignItems: 'center',
-                  }}
-                >
+                <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
                   <FileText size={14} />
                   {author.totalPosts} publicaciones
                 </span>
@@ -195,9 +113,7 @@ export const AuthorDetail: React.FC = () => {
 
         {posts.length === 0 ? (
           <div className="app-card" style={{ textAlign: 'center' }}>
-            <p className="app-muted">
-              Este autor aún no ha publicado debates.
-            </p>
+            <p className="app-muted">Este autor aún no ha publicado debates.</p>
           </div>
         ) : (
           <div className="app-grid">
@@ -224,9 +140,7 @@ export const AuthorDetail: React.FC = () => {
               type="button"
               className="app-btn"
               disabled={page === totalPages}
-              onClick={() =>
-                setPage((prev) => Math.min(prev + 1, totalPages))
-              }
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
             >
               Siguiente
             </button>
