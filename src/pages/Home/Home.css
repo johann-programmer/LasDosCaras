@@ -221,6 +221,35 @@
     rgba(30, 64, 175, 0.2);
 }
 
+.home-search-button {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--home-text-muted);
+  cursor: pointer;
+}
+
+.home-search-button svg {
+  position: static;
+  width: 18px;
+  height: 18px;
+  transform: none;
+  color: inherit;
+}
+
+.home-search-button:hover {
+  color: var(--home-text-strong);
+}
+
 .home-light .home-search input {
   background: var(--home-bg-soft);
 
