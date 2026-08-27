@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useFetch } from '../../hooks/useFetch';
+import useAuth from '../../hooks/useAuth';
 import {
   ArrowLeft,
   User,
-  Shield,
-  ShieldOff,
   UserX,
   UserCheck,
   RefreshCw,
@@ -26,10 +25,13 @@ interface UserItem {
 export const AdminUser: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const { token } = useAuth();
 
   const { data: users, loading, error, refetch } = useFetch<UserItem[]>(
     async () => {
-      const res = await fetch(`${API_BASE}/users`);
+      const res = await fetch(`${API_BASE}/admin/users?page=1&limit=20`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error || 'No se pudo obtener la lista de usuarios.');
@@ -37,38 +39,17 @@ export const AdminUser: React.FC = () => {
       const payload = await res.json();
       return Array.isArray(payload) ? payload : payload?.users || [];
     },
-    []
+    [token]
   );
 
-  const handleToggleRole = async (user: UserItem) => {
-    const newRole = user.role === 'admin' ? 'user' : 'admin';
-    setUpdatingId(user.id);
-
-    try {
-      const res = await fetch(`${API_BASE}/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!res.ok) throw new Error('Error al actualizar el rol.');
-      await refetch();
-    } catch (err) {
-      alert((err as Error).message);
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   const handleToggleStatus = async (user: UserItem) => {
-    const newStatus = user.status === 'banned' ? 'active' : 'banned';
+    const isBanned = user.status === 'banned';
     setUpdatingId(user.id);
 
     try {
-      const res = await fetch(`${API_BASE}/users/${user.id}`, {
+      const res = await fetch(`${API_BASE}/admin/users/${user.id}/${isBanned ? 'unban' : 'ban'}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
       if (!res.ok) throw new Error('Error al cambiar el estado del usuario.');
@@ -186,17 +167,6 @@ export const AdminUser: React.FC = () => {
                     </td>
                     <td style={{ padding: '12px 8px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          className="app-btn"
-                          disabled={updatingId === user.id}
-                          onClick={() => handleToggleRole(user)}
-                          title="Cambiar rol de usuario"
-                        >
-                          {user.role === 'admin' ? <ShieldOff size={14} /> : <Shield size={14} />}
-                          {user.role === 'admin' ? ' Quitar Admin' : ' Hacer Admin'}
-                        </button>
-
                         <button
                           type="button"
                           className="app-btn"
