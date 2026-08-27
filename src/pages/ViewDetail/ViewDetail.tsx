@@ -7,6 +7,7 @@ import {
   ExternalLink,
   Loader2,
   MessageSquare,
+  Pencil,
   Share2,
   ThumbsDown,
   ThumbsUp,
@@ -189,7 +190,7 @@ export const ViewDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'both' | 'A' | 'B'>('both');
   const [newComment, setNewComment] = useState('');
@@ -482,6 +483,9 @@ export const ViewDetail: React.FC = () => {
 
   const showSideA = activeTab === 'both' || activeTab === 'A';
   const showSideB = activeTab === 'both' || activeTab === 'B';
+  const isOwner = Boolean(
+    user?.id && data.authorId && user.id === data.authorId
+  );
 
   const renderSide = (
     sideKey: 'sideA' | 'sideB',
@@ -610,14 +614,26 @@ export const ViewDetail: React.FC = () => {
               </span>
             </div>
 
-            <button
-              type="button"
-              className={`view-detail-share ${copied ? 'is-copied' : ''}`}
-              onClick={handleShare}
-            >
-              {copied ? <CheckCircle2 size={16} /> : <Share2 size={16} />}
-              <span>{copied ? 'Copiado' : 'Compartir'}</span>
-            </button>
+            <div className="view-detail-meta-actions">
+              {isOwner && (
+                <Link
+                  to={`/views/${data.id}/edit`}
+                  className="view-detail-edit"
+                >
+                  <Pencil size={16} />
+                  <span>Editar publicación</span>
+                </Link>
+              )}
+
+              <button
+                type="button"
+                className={`view-detail-share ${copied ? 'is-copied' : ''}`}
+                onClick={handleShare}
+              >
+                {copied ? <CheckCircle2 size={16} /> : <Share2 size={16} />}
+                <span>{copied ? 'Copiado' : 'Compartir'}</span>
+              </button>
+            </div>
           </div>
         </header>
 
