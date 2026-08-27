@@ -58,7 +58,7 @@ const Search: React.FC = () => {
         {!loading && !error && posts.length > 0 && (
           <div className="search-results-grid">
             {posts.map((post) => (
-              <ViewCard key={post.id} post={post} highlightTerm={query} />
+              <ViewCard key={post.id} post={post} />
             ))}
           </div>
         )}

@@ -1,7 +1,6 @@
 // src/pages/Home/Home.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
-import { useDebounce } from '../../hooks/useDebounce';
 import useAuth from '../../hooks/useAuth';
 import { ViewCard, type ViewPost } from '../../components/ViewCard';
 
@@ -106,11 +105,6 @@ export const Home: React.FC = () => {
 
   const [searchText, setSearchText] = useState(
     searchParams.get('q') ?? ''
-  );
-
-  const debouncedSearchText = useDebounce(
-    searchText,
-    300
   );
 
   const [hashtagInput, setHashtagInput] =
@@ -410,35 +404,32 @@ export const Home: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const trimmed = debouncedSearchText.trim();
+    const trimmed = searchText.trim();
 
     if (!trimmed) {
-      setSearchParams(
-        (previous) => {
-          const next = new URLSearchParams(previous);
-          next.delete('q');
-          return next;
-        },
-        { replace: true }
-      );
       return;
     }
 
-    setSearchParams(
-      (previous) => {
-        const next =
-          new URLSearchParams(previous);
+    const timeout = window.setTimeout(() => {
+      setSearchParams(
+        (previous) => {
+          const next =
+            new URLSearchParams(previous);
 
-        next.set('q', trimmed);
+          next.set('q', trimmed);
 
-        return next;
-      },
-      {
-        replace: true,
-      }
-    );
+          return next;
+        },
+        {
+          replace: true,
+        }
+      );
+    }, 300);
+
+    return () =>
+      window.clearTimeout(timeout);
   }, [
-    debouncedSearchText,
+    searchText,
     setSearchParams,
   ]);
 
@@ -705,23 +696,7 @@ export const Home: React.FC = () => {
           {/* Buscador */}
 
           <div className="home-search">
-            <button
-              type="button"
-              className="home-search-button"
-              onClick={() => {
-                const query = searchText.trim();
-
-                if (query) {
-                  navigate(
-                    `/search?q=${encodeURIComponent(query)}`
-                  );
-                }
-              }}
-              aria-label="Buscar publicaciones"
-              title="Buscar publicaciones"
-            >
-              <Search />
-            </button>
+            <Search />
 
             <input
               type="search"
